@@ -11,6 +11,10 @@
 #include <cassert>
 #include <map>
 
+#ifdef _WIN32
+#include <array>
+#endif
+
 namespace uvgvolucap
 {
 
