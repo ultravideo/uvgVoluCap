@@ -1,6 +1,7 @@
 {
   "dependencies": [
     "cppzmq",
-    "nlohmann-json"
+    "nlohmann-json",
+    "azure-kinect-sensor-sdk"
   ]
 }

@@ -5,6 +5,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/incl
 configure_file(version.cpp.in version.cpp)
 
 add_subdirectory(utils)
+add_subdirectory(camera)
 
 set(LIB_SOURCES
     version.cpp
@@ -20,6 +21,7 @@ endif()
 target_link_libraries(uvgvolucap
     utilsLibrary
     logLibrary
+    cameraLibrary
 )
 
 # Include directories for headers
