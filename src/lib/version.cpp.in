@@ -1,0 +1,15 @@
+#include <cstdint>
+#include <string>
+
+namespace uvgvolucap {
+
+std::string get_version() { return "@uvgVoluCap_VERSION@"; }
+
+uint16_t get_version_major() { return @uvgVoluCap_VERSION_MAJOR@; }
+
+uint16_t get_version_minor() { return @uvgVoluCap_VERSION_MINOR@; }
+
+uint16_t get_version_patch() { return @uvgVoluCap_VERSION_PATCH@; }
+
+// std::string get_git_hash() {return "@uvgVoluCap_GIT_HASH@";}
+} // namespace uvgvolucap
