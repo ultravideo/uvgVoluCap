@@ -9,21 +9,24 @@ namespace uvgvolucap {
         template <typename... Args>
         class BasedCamera {
         protected:
-            bool is_opened = false;
-            bool is_started = false;
-            bool is_voxelized = false;
-
+            bool is_opened_flag = false;
+            bool is_started_flag = false;
+            bool is_voxelized_flag = false;
             std::shared_ptr<uvgvolucap::ThreadQueue> thread_queue;
-            virtual void init(Args... args) const = 0;
+
+        /* ####################################################### */
+        
+        protected:
+            virtual void init(Args... args) const = 0;            
+            virtual void open() = 0;
+            virtual void close() = 0;
+            virtual void start() = 0;
 
         public:
             BasedCamera() = default;
             ~BasedCamera() = default;
 
-            virtual void open() = 0;
-            virtual void close() = 0;
             virtual void warm_up() = 0;
-            virtual void start() = 0;
             virtual void stop() = 0;
         };
 

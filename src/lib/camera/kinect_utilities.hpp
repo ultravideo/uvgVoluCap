@@ -12,7 +12,10 @@ namespace uvgvolucap {
         k4a_depth_mode_t get_depth_mode(int depth_mode);
         uint32_t get_numb_connected_devices();
         std::string get_serial_number(int device_index);
+
+        //Test
         void init_connected_device(std::shared_ptr<std::vector<kinect_device_ptr>> devices, std::string config_path);
+        void start_capture(std::shared_ptr<std::vector<kinect_device_ptr>> devices, std::shared_ptr<ThreadQueue> thread_queue);
     } // namespace camera
 } // namespace uvgvolucap
 

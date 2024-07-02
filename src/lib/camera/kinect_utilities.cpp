@@ -1,4 +1,4 @@
-#include "uvgvolucap/camera/kinect_utilities.hpp"
+#include "kinect_utilities.hpp"
 #include <filesystem>
 #include <iostream>
 #include <fstream>
@@ -119,6 +119,7 @@ namespace uvgvolucap {
             Logger::log(LogLevel::INFO, "INIT", "Found " + std::to_string(num_devices) +  " device\n");
 
             devices->reserve(num_devices);
+
             for (uint32_t i = 0; i < num_devices; i++)
             {
                 std::string serial = get_serial_by_index(i);
@@ -137,6 +138,26 @@ namespace uvgvolucap {
                     return;
                 }
             }
+
+            std::string system_config = std::to_string(config_params["setting"]["fps"].get<int>()) + " fps, "
+                                        + std::to_string(config_params["setting"]["color_resolution"].get<int>()) + " color, " 
+                                        + std::to_string(config_params["setting"]["depth_resolution"].get<int>()) + " depth";
+
+            if (devices->size() > 0)
+            {
+                Logger::log(LogLevel::INFO, "INIT", "System config: "+ system_config +"\n");
+            }
+            else
+            {
+                Logger::log(LogLevel::ERROR, "INIT", "No device is initialized\n");
+            }
         }   
+
+        void start_capture(std::shared_ptr<std::vector<kinect_device_ptr>> devices, std::shared_ptr<ThreadQueue> thread_queue) {
+            Logger::log(LogLevel::INFO, "INIT", "Start all devices\n");
+            for (auto &device : *devices) {
+                device->start_capture(thread_queue);
+            }
+        }
     } // namespace camera
 } // namespace uvgvolucap

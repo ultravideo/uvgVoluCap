@@ -29,7 +29,6 @@ target_link_libraries(uvgvolucap
 
 # Include directories for headers
 target_include_directories(uvgvolucap PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_include_directories(uvgvolucap PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/camera)
 
 # Optionally, add additional configurations, dependencies, or options
 # target_compile_options(BitstreamGenerationLibrary PRIVATE -std=c++11)
