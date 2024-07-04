@@ -14,8 +14,8 @@ namespace uvgvolucap {
         std::string get_serial_number(int device_index);
 
         //Test
-        void init_connected_device(std::shared_ptr<std::vector<kinect_device_ptr>> devices, std::string config_path);
-        void start_capture(std::shared_ptr<std::vector<kinect_device_ptr>> devices, std::shared_ptr<ThreadQueue> thread_queue);
+        bool init_connected_device(std::shared_ptr<std::vector<_kinect_device_ptr>> devices, std::string config_path);
+        void start_capture(std::shared_ptr<std::vector<_kinect_device_ptr>> devices, std::shared_ptr<ThreadQueue> thread_queue, std::shared_ptr<SyncManager> _sync_manager);
     } // namespace camera
 } // namespace uvgvolucap
 

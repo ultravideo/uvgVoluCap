@@ -4,9 +4,9 @@
 #include "based_camera.hpp"	
 #include "uvgvolucap/log.hpp"
 #include "uvgvolucap/threadqueue.hpp"
+#include "geometry/point_cloud.hpp"
 #include <nlohmann/json.hpp>
 #include <k4a/k4a.hpp>
-#include <memory>
 
 namespace uvgvolucap {
     namespace camera{
@@ -15,6 +15,7 @@ namespace uvgvolucap {
             mutable int depth_resolution = 576;
             mutable int fps = 30;
             mutable bool depth_to_color = true;
+            mutable size_t max_size = 200000;
         };
 
         struct FilterConfig {
@@ -30,6 +31,15 @@ namespace uvgvolucap {
             mutable size_t width = 0;
             mutable size_t height = 0;
         };
+
+        struct SyncManager {
+            std::shared_ptr<std::function<void(int, bool)>> update_device_ready_fptr = nullptr;
+            std::shared_ptr<std::function<void(int, bool)>> update_device_capture_fptr = nullptr;
+            std::shared_ptr<std::function<int()>> get_num_ready_cam_fptr = nullptr;
+            std::shared_ptr<std::function<int()>> get_num_cap_cam_fptr = nullptr;
+            std::mutex sync_mx; /**< Mutex for synchronization. -public usage */
+            std::condition_variable Cap_permission_cv; /**< Condition variable for synchronization. - internal usage */
+        };
         
         struct KinectCameraInfo {
             mutable std::string serial_number = "";
@@ -43,16 +53,19 @@ namespace uvgvolucap {
         };
 
         struct Frame {
-            std::shared_ptr<k4a_image_t> depth_image = NULL; /**< Depth image */
-            std::shared_ptr<k4a_image_t> color_image = NULL; /**< Color image */
+            int id = 0; /**< Frame ID */
+            k4a_image_t depth_image = NULL; /**< Depth image */
+            k4a_image_t color_image = NULL; /**< Color image */
+            
+            std::shared_ptr<geometry::PclFragment> fragment_pcl = std::make_shared<geometry::PclFragment>(); /**< Point cloud */
 
             /**
              * @brief Constructor for Data_package.
              * @param depth_ The depth image.
              * @param color_ The color image.
              */
-            Frame(std::shared_ptr<k4a_image_t> depth_, std::shared_ptr<k4a_image_t> color_)
-                : depth_image(depth_), color_image(color_) {}
+            Frame(int _id, k4a_image_t depth_, k4a_image_t color_)
+                : id(_id), depth_image(depth_), color_image(color_) {}
         };
         
         class Kinect : public BasedCamera<uint32_t, std::string, nlohmann::json> {
@@ -72,6 +85,7 @@ namespace uvgvolucap {
 
             std::shared_ptr<std::thread> capture_thread_ptr;
             std::function<void()> capture_function;
+            std::shared_ptr<camera::SyncManager> sync_manager = nullptr;
 
         public:
             Kinect(uint32_t _index, std::string _serial, nlohmann::json _config);
@@ -80,12 +94,15 @@ namespace uvgvolucap {
             std::string get_serial_number();
             void warm_up() override;
             void stop() override;
-            void start_capture(std::shared_ptr<uvgvolucap::ThreadQueue> _thread_queue);
+            void start_capture(std::shared_ptr<ThreadQueue> _thread_queue, std::shared_ptr<SyncManager> _sync_manager);
         
         private:
             void setup_device_config();
             void createXYTable(const k4a_calibration_t *calibration);
 
+            void transform_view_point(std::shared_ptr<Frame> frame);
+            void process_frame(std::shared_ptr<Frame> frame);
+            void pack_fragment(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer);
             void pointcloud_production_line();
 
         protected:
@@ -95,7 +112,7 @@ namespace uvgvolucap {
             void start() override;
         };
 
-        typedef std::shared_ptr<Kinect> kinect_device_ptr;
+        typedef std::shared_ptr<Kinect> _kinect_device_ptr;
     } // namespace camera
 } // namespace uvgvolucap
 

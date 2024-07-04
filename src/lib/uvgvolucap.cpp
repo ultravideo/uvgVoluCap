@@ -1,10 +1,12 @@
 #include "uvgvolucap/uvgvolucap.hpp"
-#include "camera/kinect_utilities.hpp"
 
 namespace uvgvolucap {
     namespace core {
         PointCloudFactory::PointCloudFactory() {
-
+            sync_manager_handler->update_device_ready_fptr.reset(new std::function<void(int, bool)>(std::bind(&PointCloudFactory::update_device_ready, this, std::placeholders::_1, std::placeholders::_2)));
+            sync_manager_handler->update_device_capture_fptr.reset(new std::function<void(int, bool)>(std::bind(&PointCloudFactory::update_device_capture, this, std::placeholders::_1, std::placeholders::_2)));
+            sync_manager_handler->get_num_ready_cam_fptr.reset(new std::function<int()>(std::bind(&PointCloudFactory::get_num_ready_cam, this)));
+            sync_manager_handler->get_num_cap_cam_fptr.reset(new std::function<int()>(std::bind(&PointCloudFactory::get_num_cap_cam, this)));
         }
 
         PointCloudFactory::~PointCloudFactory() {
@@ -12,7 +14,7 @@ namespace uvgvolucap {
         }
 
         void PointCloudFactory::syncExecute() {
-            std::unique_lock<std::mutex> lock(*sync_mx);
+            std::unique_lock<std::mutex> lock(sync_manager_handler->sync_mx);
 
             while (!stop_flag)
             {
@@ -24,7 +26,7 @@ namespace uvgvolucap {
 
                 // packageProvider->createPackageImage();
 
-                Cap_permission_cv->notify_all();
+                sync_manager_handler->Cap_permission_cv.notify_all();
 
                 main_cv.wait(lock, [&]
                         { return cap_Cam == 0; });
@@ -71,34 +73,39 @@ namespace uvgvolucap {
             return cap_Cam;
         }
 
-        std::shared_ptr<std::condition_variable> PointCloudFactory::get_Cap_permission_cv() {
-            return Cap_permission_cv;
+        std::shared_ptr<camera::SyncManager> PointCloudFactory::get_sync_manager() {
+            return sync_manager_handler;
         }
 
-        std::shared_ptr<std::mutex> PointCloudFactory::get_sync_mx() {
-            return sync_mx;
-        }
+        // std::shared_ptr<std::condition_variable> PointCloudFactory::get_Cap_permission_cv() {
+        //     return Cap_permission_cv;
+        // }
+
+        // std::shared_ptr<std::mutex> PointCloudFactory::get_sync_mx() {
+        //     return sync_mx;
+        // }
 
         template <typename Func, typename... Args>
         void PointCloudFactory::start_producing(Func&& func, Args&&... args) {
-            std::function<void()> f = std::bind(std::forward<Func>(func), std::forward<Args>(args)..., thread_queue);
+            std::function<void()> f = std::bind(std::forward<Func>(func), std::forward<Args>(args)..., thread_queue, sync_manager_handler);
             f();
-            std::this_thread::sleep_for(std::chrono::seconds(5));
-            std::cout << "Goodbye, World!" << std::endl;
+            // std::this_thread::sleep_for(std::chrono::seconds(5));
+            syncExecute();
         }
     }
-
 
     namespace API {
         void test() {
             std::cout << "Hello, World!" << std::endl;
-            std::shared_ptr<std::vector<camera::kinect_device_ptr>> devices = std::make_shared<std::vector<camera::kinect_device_ptr>>();
-            camera::init_connected_device(devices, "C:/Users/Guillaume/workspace/uvgvolucap/asset/cameraconfig.json");
-            
-            core::PointCloudFactory factory;
-            factory.set_sync_limit(devices->size());
-            factory.start_producing(camera::start_capture, devices);
+            std::shared_ptr<std::vector<camera::_kinect_device_ptr>> devices = std::make_shared<std::vector<camera::_kinect_device_ptr>>();
+            bool init_success = camera::init_connected_device(devices, "C:/Users/Guillaume/workspace/uvgvolucap/asset/cameraconfig.json");
+  
+            if (!init_success) { return; }
 
+            core::PointCloudFactory factory;
+            factory.set_sync_limit(devices->size()); 
+            factory.start_producing(camera::start_capture, devices);
+            std::cout << "Goodbye, World!" << std::endl;
         }
     } // namespace API
 } // namespace uvgvolucap

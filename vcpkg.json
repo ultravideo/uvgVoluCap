@@ -2,6 +2,8 @@
   "dependencies": [
     "cppzmq",
     "nlohmann-json",
-    "azure-kinect-sensor-sdk"
+    "azure-kinect-sensor-sdk",
+    "glm",
+    "opencv"
   ]
 }

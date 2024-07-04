@@ -13,6 +13,24 @@ namespace uvgvolucap {
             }
             std::ifstream file(config_path);
             nlohmann::json config = nlohmann::json::parse(file);
+
+            //verify the config file
+            std::vector<std::string> required_keys = {"system", "setting", "filter", "devices_config", "grid"};
+            for (auto &key : required_keys)
+            {
+                if (config.find(key) == config.end())
+                {
+                    Logger::log(LogLevel::ERROR, "INIT", "Config file is missing key: " + key + "\n");
+                    std::throw_with_nested(std::runtime_error("Config file is missing key: " + key));
+                }
+            }
+
+            if (config["system"]["version"] != "0.1.0")
+            {
+                Logger::log(LogLevel::ERROR, "INIT", "Config file version is not supported\n");
+                std::throw_with_nested(std::runtime_error("Config file version is not supported"));
+            }
+
             return config;
         }
 
@@ -111,21 +129,21 @@ namespace uvgvolucap {
             return std::string(serial_buf);
         }
 
-        void init_connected_device(std::shared_ptr<std::vector<kinect_device_ptr>> devices, std::string config_path) {
+        bool init_connected_device(std::shared_ptr<std::vector<_kinect_device_ptr>> devices, std::string config_path) {
             nlohmann::json config_params = parse_config(config_path);
 
             uint32_t num_devices = get_numb_connected_devices();               
-            
-            Logger::log(LogLevel::INFO, "INIT", "Found " + std::to_string(num_devices) +  " device\n");
-
             devices->reserve(num_devices);
+
+            Logger::log(LogLevel::INFO, "INIT", "Found " + std::to_string(num_devices) +  " device\n");
 
             for (uint32_t i = 0; i < num_devices; i++)
             {
                 std::string serial = get_serial_by_index(i);
+
                 if (config_params["devices_config"].find(serial) != config_params["devices_config"].end())
                 {
-                    if (!config_params["devices_config"][serial].at("disabled").get<bool>()) {
+                    if (!config_params["devices_config"][serial].at("disabled").get<bool>()) {                
                         devices->push_back(std::make_shared<Kinect>(i, serial, config_params));
                     }
                     else {
@@ -135,7 +153,7 @@ namespace uvgvolucap {
                 else
                 {
                     Logger::log(LogLevel::ERROR, "INIT", "No config found for device with serial number: " + serial + "\n");
-                    return;
+                    return false;
                 }
             }
 
@@ -143,20 +161,21 @@ namespace uvgvolucap {
                                         + std::to_string(config_params["setting"]["color_resolution"].get<int>()) + " color, " 
                                         + std::to_string(config_params["setting"]["depth_resolution"].get<int>()) + " depth";
 
-            if (devices->size() > 0)
+            if (devices->size() > 0 && devices->size() <= num_devices)
             {
                 Logger::log(LogLevel::INFO, "INIT", "System config: "+ system_config +"\n");
+                return true;
             }
             else
             {
                 Logger::log(LogLevel::ERROR, "INIT", "No device is initialized\n");
+                return false;
             }
-        }   
+        }  
 
-        void start_capture(std::shared_ptr<std::vector<kinect_device_ptr>> devices, std::shared_ptr<ThreadQueue> thread_queue) {
-            Logger::log(LogLevel::INFO, "INIT", "Start all devices\n");
+        void start_capture(std::shared_ptr<std::vector<_kinect_device_ptr>> devices, std::shared_ptr<ThreadQueue> thread_queue, std::shared_ptr<SyncManager> _sync_manager) {
             for (auto &device : *devices) {
-                device->start_capture(thread_queue);
+                device->start_capture(thread_queue, _sync_manager);
             }
         }
     } // namespace camera

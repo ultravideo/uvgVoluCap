@@ -6,6 +6,7 @@ configure_file(version.cpp.in version.cpp)
 
 add_subdirectory(utils)
 add_subdirectory(camera)
+add_subdirectory(geometry)
 
 set(LIB_SOURCES
     version.cpp
@@ -24,6 +25,7 @@ target_link_libraries(uvgvolucap
     utilsLibrary
     logLibrary
     cameraLibrary
+    geometryLibrary
     nlohmann_json::nlohmann_json
 )
 
