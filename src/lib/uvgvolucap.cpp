@@ -13,23 +13,52 @@ namespace uvgvolucap {
             
         }
 
-        void PointCloudFactory::syncExecute() {
+        void PointCloudFactory::execute_sync() {
+            zmq::context_t context{1};
+
+            zmq::socket_t colorSocket(context, ZMQ_PUSH);
+            colorSocket.connect("tcp://localhost:5555");
+
+            zmq::socket_t positionSocket(context, ZMQ_PUSH);
+            positionSocket.connect("tcp://localhost:5556");
+
+            //Lamda function for sending data
+            auto send_data = [&](std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer) {
+                zmq_send(colorSocket, m_merge_buffer->attributes, m_merge_buffer->curr_index * sizeof(glm::vec3),0);
+                zmq_send(positionSocket, m_merge_buffer->positions, m_merge_buffer->curr_index * sizeof(glm::vec3),0);
+                Logger::log(LogLevel::ERROR, "Sender Zmq", std::to_string(m_merge_buffer->curr_index) + "\n");
+            };
+
             std::unique_lock<std::mutex> lock(sync_manager_handler->sync_mx);
+            std::shared_ptr<uvgvolucap::Job> pre_send_job = nullptr;
 
             while (!stop_flag)
             {
+                std::shared_ptr<uvgvolucap::Job> curr_send_job = std::make_shared<uvgvolucap::Job>("SendJob", 3, send_data, sync_manager_handler->m_merge_buffer);
+                sync_manager_handler->send_job  = curr_send_job;
                 main_cv.wait(lock, [&]
                         { return ready_Cam == limit; });
 
                 update_device_ready(RESET, true);
                 update_device_capture(RESET, true);
 
-                // packageProvider->createPackageImage();
-
                 sync_manager_handler->Cap_permission_cv.notify_all();
 
                 main_cv.wait(lock, [&]
                         { return cap_Cam == 0; });
+
+                thread_queue->submitJob(sync_manager_handler->send_job);
+                sync_manager_handler->count_pcl++;
+                sync_manager_handler->m_merge_buffer = std::make_shared<geometry::MergeBufferPointCloud>(); 
+                sync_manager_handler->m_merge_buffer->id = static_cast<int>(sync_manager_handler->count_pcl);
+
+                if (pre_send_job == nullptr)
+                {
+                    pre_send_job = curr_send_job;
+                    continue;
+                }
+                curr_send_job->addDependency(pre_send_job);
+                curr_send_job = pre_send_job;
             }
         }
 
@@ -77,20 +106,11 @@ namespace uvgvolucap {
             return sync_manager_handler;
         }
 
-        // std::shared_ptr<std::condition_variable> PointCloudFactory::get_Cap_permission_cv() {
-        //     return Cap_permission_cv;
-        // }
-
-        // std::shared_ptr<std::mutex> PointCloudFactory::get_sync_mx() {
-        //     return sync_mx;
-        // }
-
         template <typename Func, typename... Args>
         void PointCloudFactory::start_producing(Func&& func, Args&&... args) {
             std::function<void()> f = std::bind(std::forward<Func>(func), std::forward<Args>(args)..., thread_queue, sync_manager_handler);
             f();
-            // std::this_thread::sleep_for(std::chrono::seconds(5));
-            syncExecute();
+            execute_sync();
         }
     }
 

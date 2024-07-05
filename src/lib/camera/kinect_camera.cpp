@@ -283,6 +283,8 @@ namespace uvgvolucap {
             uint16_t *depth_data = (uint16_t *)(void *)k4a_image_get_buffer(frame->depth_image);
             geometry::_bgra_t *color_data = (geometry::_bgra_t *)(void *)k4a_image_get_buffer(frame->color_image);
 
+            int qualified_points = 0;
+
             for (size_t row = device_info.roi.start_y ; row < device_info.roi.start_y + device_info.roi.height; ++row) {
                 for (size_t col = device_info.roi.start_x; col < device_info.roi.start_x + device_info.roi.width; ++col) {
                     size_t i = row * width + col;
@@ -311,22 +313,24 @@ namespace uvgvolucap {
                             z > device_info.filter_config.min_z && z < device_info.filter_config.max_z)
                         {
                             frame->fragment_pcl->add_point(x, y, z, r, g, b);
+                            qualified_points++;
                         }
                     }
                 }
             }
 
             frame->fragment_pcl->finallized();
+            Logger::log(LogLevel::INFO, device_info.serial_number, "Number of points: " + std::to_string(frame->fragment_pcl->max_size()) + " || Test: " + std::to_string(qualified_points) + "\n");
             k4a_image_release(frame->depth_image);
             k4a_image_release(frame->color_image);
-
             //print 5 points
-
         }
 
-        void Kinect::pack_fragment(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer) {
-            fragment_pcl->prep_to_merge_buffer(m_merge_buffer);
-            fragment_pcl->copy_to_merge_buffer();
+        void Kinect::pack_fragment(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::MergeBufferPointCloud> _asisgned_merge_buffer) {
+            if (fragment_pcl->prep_to_merge_buffer(_asisgned_merge_buffer)) {
+                //  std::cout << "Pack fragment " << device_info.serial_number << " - id: " << _asisgned_merge_buffer->id <<  std::endl;
+                fragment_pcl->copy_to_merge_buffer();
+            }
         }
 
         void Kinect::pointcloud_production_line() {
@@ -365,18 +369,20 @@ namespace uvgvolucap {
                                                                             color_image
                                                                         );
 
+                    std::shared_ptr<geometry::MergeBufferPointCloud> assigned_merge_buffer = sync_manager->m_merge_buffer;
                     auto transf_vp_job = std::make_shared<uvgvolucap::Job>("TransformViewPoint", 0, &Kinect::transform_view_point, this, frame);
                     auto process_frame_job = std::make_shared<uvgvolucap::Job>("ProcessFrame", 1, &Kinect::process_frame, this, frame);
-                    // auto pack_fragment_job = std::make_shared<uvgvolucap::Job>("PackFragment", 2, &Kinect::pack_fragment, this, frame->fragment_pcl, m_merge_buffer);
+                    auto pack_fragment_job = std::make_shared<uvgvolucap::Job>("PackFragment", 2, &Kinect::pack_fragment, this, frame->fragment_pcl, assigned_merge_buffer);
 
                     process_frame_job->addDependency(transf_vp_job);
-                    // pack_fragment_job->addDependency(process_frame_job);
+                    pack_fragment_job->addDependency(process_frame_job);
+                    sync_manager->send_job->addDependency(pack_fragment_job);
 
                     //Missing the export job
 
                     thread_queue->submitJob(transf_vp_job);
                     thread_queue->submitJob(process_frame_job);
-                    // thread_queue->submitJob(pack_fragment_job);
+                    thread_queue->submitJob(pack_fragment_job);
 
                 }
                 else if (result == K4A_WAIT_RESULT_FAILED)

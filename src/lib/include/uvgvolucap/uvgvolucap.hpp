@@ -6,6 +6,8 @@
 #include "threadqueue.hpp"
 #include "camera/kinect_utilities.hpp"
 
+#include <zmq.hpp>
+
 #define RESET 99
 
 namespace uvgvolucap {
@@ -33,7 +35,7 @@ namespace uvgvolucap {
             PointCloudFactory();
             ~PointCloudFactory();
 
-            void syncExecute();
+            void execute_sync();
             void set_sync_limit(size_t total_cams);
             void update_device_ready(int camera_index, bool reset);
             void update_device_capture(int camera_index, bool reset);

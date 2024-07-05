@@ -37,8 +37,13 @@ namespace uvgvolucap {
             std::shared_ptr<std::function<void(int, bool)>> update_device_capture_fptr = nullptr;
             std::shared_ptr<std::function<int()>> get_num_ready_cam_fptr = nullptr;
             std::shared_ptr<std::function<int()>> get_num_cap_cam_fptr = nullptr;
+
             std::mutex sync_mx; /**< Mutex for synchronization. -public usage */
             std::condition_variable Cap_permission_cv; /**< Condition variable for synchronization. - internal usage */
+        
+            size_t count_pcl = 0; //For control based on user input
+            std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer = nullptr; /**< Point cloud buffer */
+            std::shared_ptr<uvgvolucap::Job> send_job = nullptr; /**< Job for sending point cloud */
         };
         
         struct KinectCameraInfo {
@@ -102,7 +107,7 @@ namespace uvgvolucap {
 
             void transform_view_point(std::shared_ptr<Frame> frame);
             void process_frame(std::shared_ptr<Frame> frame);
-            void pack_fragment(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer);
+            void pack_fragment(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::MergeBufferPointCloud> _asisgned_merge_buffer);
             void pointcloud_production_line();
 
         protected:

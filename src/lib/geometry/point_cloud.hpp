@@ -24,10 +24,10 @@ namespace uvgvolucap {
 			uint8_t v[4]; /**< Array representation of a vector */
 		} _bgra_t;
 
-        typedef std::vector<glm::vec3> _points;
-        typedef std::vector<glm::vec3> _attributes;    
-        typedef std::shared_ptr<_points> _points_ptr;
-        typedef std::shared_ptr<_attributes> _attributes_ptr;
+        typedef std::vector<glm::vec3> _points_vec3;
+        typedef std::vector<glm::vec3> _attributes_vec3;    
+        typedef std::shared_ptr<_points_vec3> _points_vec3_ptr;
+        typedef std::shared_ptr<_attributes_vec3> _attributes_vec3_ptr;
 
         /**
 		 * @brief Class representing a OpenGL point cloud.
@@ -41,8 +41,8 @@ namespace uvgvolucap {
 			size_t m_size = 0;
 			size_t m_max_size = 200000;
 
-            _points_ptr positions  = std::make_shared<_points>();
-			_attributes_ptr attributes = std::make_shared<_attributes>();
+            _points_vec3_ptr positions  = std::make_shared<_points_vec3>();
+			_attributes_vec3_ptr attributes = std::make_shared<_attributes_vec3>();
 
 		public:
 			PointCloud() = default;
@@ -69,39 +69,33 @@ namespace uvgvolucap {
 			bool reach_limitsize();
 			const glm::vec3& get_position_by_index(size_t index) const;
 			const glm::vec3& get_attribute_by_index(size_t index) const;
-			const _points_ptr getPositionsVec() const;
-			const _attributes_ptr getAttributesVec() const;
+			const _points_vec3_ptr getPositionsVec() const;
+			const _attributes_vec3_ptr getAttributesVec() const;
             size_t max_size() const;
 		};
 
         struct MergeBufferPointCloud {
-            _points_ptr positions = std::make_shared<std::vector<glm::vec3>>(1);
-            _attributes_ptr attributes = std::make_shared<std::vector<glm::vec3>>(1);
-
-            // _points::iterator curr_pos_buff_iterator = positions->begin();
-            // _attributes::iterator curr_attr_buff_iterator = attributes->begin();
+            int id = 0;
+            static const size_t max_size = 900000;
+            glm::vec3 positions[max_size];
+            glm::vec3 attributes[max_size];
 
             std::mutex buff_mx;
-            size_t curr_buff_size = 0;
-
-            MergeBufferPointCloud(size_t size = 200000) : curr_buff_size(size) {
-                positions->resize(size);
-                attributes->resize(size);
-            }
+            size_t curr_index = 0;
         };
 
         class PclFragment : public PointCloud
         {
             private:
                 std::shared_ptr<MergeBufferPointCloud> m_merge_buffer = nullptr;
-                size_t curr_pts_merge_buff = 0;
+                size_t curr_start_buff_index = 0;
 				// _points::iterator curr_pos_iterator = m_merge_buffer->positions->begin();
                 // _attributes::iterator curr_attr_iterator = m_merge_buffer->attributes->begin();
             
             public:
                 PclFragment();
                 ~PclFragment();
-                void prep_to_merge_buffer(std::shared_ptr<MergeBufferPointCloud> _merge_buffer);
+                bool prep_to_merge_buffer(std::shared_ptr<MergeBufferPointCloud> _merge_buffer);
                 void copy_to_merge_buffer();
         };
 

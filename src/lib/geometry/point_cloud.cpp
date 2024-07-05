@@ -1,4 +1,5 @@
 #include "point_cloud.hpp"
+#include <iostream>
 
 namespace uvgvolucap {
     namespace geometry {
@@ -58,12 +59,12 @@ namespace uvgvolucap {
 			return (*attributes)[index];
 		}
 
-		const _points_ptr PointCloud::getPositionsVec() const 
+		const _points_vec3_ptr PointCloud::getPositionsVec() const 
 		{
 			return positions;
 		}
 
-		const _attributes_ptr PointCloud::getAttributesVec() const 
+		const _attributes_vec3_ptr PointCloud::getAttributesVec() const 
 		{
 			return attributes;
 		}
@@ -109,33 +110,34 @@ namespace uvgvolucap {
             attributes->clear();
         }
 
-        void PclFragment::prep_to_merge_buffer(std::shared_ptr<MergeBufferPointCloud> _merge_buffer)
+        bool PclFragment::prep_to_merge_buffer(std::shared_ptr<MergeBufferPointCloud> _merge_buffer)
         {
             m_merge_buffer = _merge_buffer;
 
             if (m_size == 0)
-                return;
+                return false;
             
-            std::unique_lock<std::mutex> lock(m_merge_buffer->buff_mx);
+            std::lock_guard<std::mutex> lock(m_merge_buffer->buff_mx);
 
-            if (m_merge_buffer->curr_buff_size + m_size > m_max_size)
-                return;
+            curr_start_buff_index = m_merge_buffer->curr_index;
 
-            // curr_pos_iterator = m_merge_buffer->curr_pos_buff_iterator;
-            // curr_attr_iterator = m_merge_buffer->curr_attr_buff_iterator;
+            // Check if the remaining buffer is enough
+            if (m_merge_buffer->curr_index + m_size > m_merge_buffer->max_size)
+            {
+                m_size = m_merge_buffer->max_size - m_merge_buffer->curr_index;
+            }
+            
+            m_merge_buffer->curr_index+= (m_size);
 
-            // m_merge_buffer->curr_pos_buff_iterator = m_merge_buffer->positions->begin() + m_size;
-            // m_merge_buffer->curr_attr_buff_iterator = m_merge_buffer->attributes->begin() + m_size;	
-            curr_pts_merge_buff = m_merge_buffer->curr_buff_size;
-            m_merge_buffer->curr_buff_size+= m_size;
-
-            lock.unlock();
+            return true;
         }
 
         void PclFragment::copy_to_merge_buffer()
         {
-            memcpy(m_merge_buffer->positions->data() + curr_pts_merge_buff, positions->data(), m_size * sizeof(glm::vec3));
-            memcpy(m_merge_buffer->attributes->data() + curr_pts_merge_buff, attributes->data(), m_size * sizeof(glm::vec3));
+             std::cout << "id: "<< m_merge_buffer->id << " - Write loc: "  << curr_start_buff_index << " to " << curr_start_buff_index + m_size << std::endl;
+                
+            memcpy(m_merge_buffer->positions + curr_start_buff_index, positions->data(), m_size * sizeof(glm::vec3));
+            memcpy(m_merge_buffer->attributes + curr_start_buff_index, attributes->data(), m_size * sizeof(glm::vec3));
         }
 
     } // namespace geometry

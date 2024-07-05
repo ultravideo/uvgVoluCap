@@ -20,6 +20,7 @@ else()
 endif()
 
 find_package(nlohmann_json 3.11.3 REQUIRED)
+find_package(cppzmq CONFIG REQUIRED)
 
 target_link_libraries(uvgvolucap
     utilsLibrary
@@ -27,6 +28,8 @@ target_link_libraries(uvgvolucap
     cameraLibrary
     geometryLibrary
     nlohmann_json::nlohmann_json
+    cppzmq
+    cppzmq-static
 )
 
 # Include directories for headers
