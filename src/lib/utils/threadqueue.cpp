@@ -2,6 +2,10 @@
 #include "uvgvolucap/threadqueue.hpp"
 #include "uvgvolucap/log.hpp"
 
+#ifdef _WIN32
+#include <algorithm> // for std::any_of on Windows
+#endif
+
 namespace uvgvolucap
 {
 

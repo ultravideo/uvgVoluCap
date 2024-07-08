@@ -1,6 +1,7 @@
 #include <iostream>
+#include "uvgvolucap/uvgvolucap.hpp"
 
 int main() {
-    std::cout << "Hello, World!" << std::endl;
+    uvgvolucap::API::test();
     return 0;
 }
