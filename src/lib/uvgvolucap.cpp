@@ -24,8 +24,8 @@ namespace uvgvolucap {
 
             //Lamda function for sending data
             auto send_data = [&](std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer) {
-                zmq_send(colorSocket, m_merge_buffer->attributes, m_merge_buffer->curr_index * sizeof(glm::vec3),0);
-                zmq_send(positionSocket, m_merge_buffer->positions, m_merge_buffer->curr_index * sizeof(glm::vec3),0);
+                zmq_send(colorSocket, m_merge_buffer->attributes, m_merge_buffer->curr_index * sizeof(glm::vec3), 0);
+                zmq_send(positionSocket, m_merge_buffer->positions, m_merge_buffer->curr_index * sizeof(glm::vec3), 0);
                 Logger::log(LogLevel::ERROR, "Sender Zmq", std::to_string(m_merge_buffer->curr_index) + "\n");
             };
 
@@ -34,6 +34,7 @@ namespace uvgvolucap {
 
             while (!stop_flag)
             {
+                sync_manager_handler->m_merge_buffer = std::make_shared<geometry::MergeBufferPointCloud>(); 
                 std::shared_ptr<uvgvolucap::Job> curr_send_job = std::make_shared<uvgvolucap::Job>("SendJob", 3, send_data, sync_manager_handler->m_merge_buffer);
                 sync_manager_handler->send_job  = curr_send_job;
                 main_cv.wait(lock, [&]
@@ -49,7 +50,6 @@ namespace uvgvolucap {
 
                 thread_queue->submitJob(sync_manager_handler->send_job);
                 sync_manager_handler->count_pcl++;
-                sync_manager_handler->m_merge_buffer = std::make_shared<geometry::MergeBufferPointCloud>(); 
                 sync_manager_handler->m_merge_buffer->id = static_cast<int>(sync_manager_handler->count_pcl);
 
                 if (pre_send_job == nullptr)
@@ -58,7 +58,7 @@ namespace uvgvolucap {
                     continue;
                 }
                 curr_send_job->addDependency(pre_send_job);
-                curr_send_job = pre_send_job;
+                pre_send_job = curr_send_job;
             }
         }
 
@@ -118,7 +118,9 @@ namespace uvgvolucap {
         void test() {
             std::cout << "Hello, World!" << std::endl;
             std::shared_ptr<std::vector<camera::_kinect_device_ptr>> devices = std::make_shared<std::vector<camera::_kinect_device_ptr>>();
-            bool init_success = camera::init_connected_device(devices, "C:/Users/Guillaume/workspace/uvgvolucap/asset/cameraconfig.json");
+            // bool init_success = camera::init_connected_device(devices, "C:/Users/Guillaume/workspace/uvgvolucap/asset/cameraconfig.json");
+            bool init_success = camera::init_connected_device(devices, "C:/Users/Guillaume/workspace/Testing/ROI/cameraconfig.json");
+  
   
             if (!init_success) { return; }
 

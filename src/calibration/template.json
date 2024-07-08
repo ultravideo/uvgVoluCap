@@ -1,0 +1,27 @@
+{
+  "system": {
+      "version": "0.1.0",
+      "type": "kinect"
+  },
+  "setting": {
+      "color_resolution": 1536,
+      "depth_resolution": 576,
+      "fps": 30,
+      "depth_to_color": true,
+      "max_size": 600000 
+  },
+  "filter": {
+      "max_xy" : 2.0,
+      "min_xy" : -0.1,
+      "max_z" : 2.0,
+      "min_z" : -2.0
+  },
+  "grid": {
+      "voxle_exp": 4,
+      "horizontal_exp" : 10,
+      "vertical_exp" : 10
+  },
+  "devices_config":{
+     
+  }
+}

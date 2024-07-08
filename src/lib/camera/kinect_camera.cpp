@@ -288,6 +288,7 @@ namespace uvgvolucap {
             for (size_t row = device_info.roi.start_y ; row < device_info.roi.start_y + device_info.roi.height; ++row) {
                 for (size_t col = device_info.roi.start_x; col < device_info.roi.start_x + device_info.roi.width; ++col) {
                     size_t i = row * width + col;
+
                     if (depth_data[i] != 0 && !std::isnan(xy_table_data[i].xy.x) && !std::isnan(xy_table_data[i].xy.y)) // && depth_data[i] < 1702)
                     {
                         uint8_t b = color_data[i].bgra.b;
@@ -378,8 +379,6 @@ namespace uvgvolucap {
                     pack_fragment_job->addDependency(process_frame_job);
                     sync_manager->send_job->addDependency(pack_fragment_job);
 
-                    //Missing the export job
-
                     thread_queue->submitJob(transf_vp_job);
                     thread_queue->submitJob(process_frame_job);
                     thread_queue->submitJob(pack_fragment_job);
@@ -396,21 +395,6 @@ namespace uvgvolucap {
                 k4a_capture_release(capture);
                 (*sync_manager->update_device_ready_fptr)(device_info.index, false);
             }
-
-            //thread_queue->waitForJob(prev_export_job);
-            
-          
-            //while (true) {
-                // Wait for all cameras to be ready
-
-                //get capture
-                //Sinal capture done
-
-                //get depth and color image
-                // Assign images to frame
-                // Tranform job
-                // process job
-            //}
         }
     } // namespace camera
 }   // namespace uvgvolucap
