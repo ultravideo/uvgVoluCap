@@ -8,6 +8,10 @@ namespace uvgvolucap {
         {
             init(_index, _serial, _config);
             setup_device_config();
+
+            auto grid_attribute = _config["grid"];
+            grid_ptr = std::make_shared<geometry::Grid>(grid_attribute["geometry_precision"].get<int>());
+            grid_ptr->set_real_world_params(device_info.filter_config.max_xy, device_info.filter_config.min_xy, device_info.filter_config.max_z, device_info.filter_config.min_z);
         }
 
         void Kinect::init(uint32_t _index, std::string _serial, nlohmann::json _config) const
@@ -313,7 +317,15 @@ namespace uvgvolucap {
                             y > device_info.filter_config.min_xy && y < device_info.filter_config.max_xy &&
                             z > device_info.filter_config.min_z && z < device_info.filter_config.max_z)
                         {
-                            frame->fragment_pcl->add_point(x, y, z, r, g, b);
+                            glm::vec3 grid_point = grid_ptr->real_to_grid(x, y, z);
+
+                            if (grid_point.x < 0 || 
+                                grid_point.y < 0 || 
+                                grid_point.z < 0 )
+                            { continue; }
+
+                            frame->fragment_pcl->add_point(grid_point.x, grid_point.y, grid_point.z, r, g, b);
+                            // frame->fragment_pcl->add_point(x, y, z, r, g, b);
                             qualified_points++;
                         }
                     }
@@ -321,7 +333,6 @@ namespace uvgvolucap {
             }
 
             frame->fragment_pcl->finallized();
-            Logger::log(LogLevel::INFO, device_info.serial_number, "Number of points: " + std::to_string(frame->fragment_pcl->max_size()) + " || Test: " + std::to_string(qualified_points) + "\n");
             k4a_image_release(frame->depth_image);
             k4a_image_release(frame->color_image);
             //print 5 points

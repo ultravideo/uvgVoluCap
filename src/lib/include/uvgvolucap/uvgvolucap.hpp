@@ -31,6 +31,23 @@ namespace uvgvolucap {
             
             bool stop_flag = false;
 
+
+            /* Test */
+            struct VoxelData {
+                size_t index;
+                int count;
+            };
+            using VoxelCoord = glm::vec3;
+            // Define a hash function for VoxelCoord
+            struct VoxelCoordHash {
+                std::size_t operator()(const VoxelCoord& coord) const {
+                    std::size_t hx = std::hash<std::size_t>()(static_cast<std::size_t>(coord.x));
+                    std::size_t hy = std::hash<std::size_t>()(static_cast<std::size_t>(coord.y));
+                    std::size_t hz = std::hash<std::size_t>()(static_cast<std::size_t>(coord.z));
+                    return hx ^ (hy << 1) ^ (hz << 2);  // Combine the hashes
+                }
+            };
+
         public:
             PointCloudFactory();
             ~PointCloudFactory();

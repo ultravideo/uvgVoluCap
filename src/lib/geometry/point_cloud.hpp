@@ -89,8 +89,6 @@ namespace uvgvolucap {
             private:
                 std::shared_ptr<MergeBufferPointCloud> m_merge_buffer = nullptr;
                 size_t curr_start_buff_index = 0;
-				// _points::iterator curr_pos_iterator = m_merge_buffer->positions->begin();
-                // _attributes::iterator curr_attr_iterator = m_merge_buffer->attributes->begin();
             
             public:
                 PclFragment();

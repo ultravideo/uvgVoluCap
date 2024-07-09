@@ -1,4 +1,5 @@
 #include "uvgvolucap/uvgvolucap.hpp"
+#include <unordered_map>
 
 namespace uvgvolucap {
     namespace core {
@@ -22,10 +23,46 @@ namespace uvgvolucap {
             zmq::socket_t positionSocket(context, ZMQ_PUSH);
             positionSocket.connect("tcp://localhost:5556");
 
+            std::unordered_map<VoxelCoord, VoxelData, VoxelCoordHash> voxelMap;
+
             //Lamda function for sending data
             auto send_data = [&](std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer) {
-                zmq_send(colorSocket, m_merge_buffer->attributes, m_merge_buffer->curr_index * sizeof(glm::vec3), 0);
-                zmq_send(positionSocket, m_merge_buffer->positions, m_merge_buffer->curr_index * sizeof(glm::vec3), 0);
+                
+                geometry::_points_vec3 tmp_positions;
+                geometry::_attributes_vec3 tmp_attributes;
+
+                voxelMap.clear();
+                size_t index = 0;
+                for (size_t i = 0; i < m_merge_buffer->curr_index; i++)
+                {
+                    VoxelCoord coord = m_merge_buffer->positions[i];
+                    auto voxel = voxelMap.find(coord);
+                    if (voxel == voxelMap.end()) {
+
+                        tmp_positions.push_back(m_merge_buffer->positions[i]);
+                        tmp_attributes.push_back(m_merge_buffer->attributes[i]);
+
+                        VoxelData data = {index, 1};
+                        voxelMap.insert({coord, data});
+                        index++;
+                    }
+                    else {
+                        // float avg_r = (m_merge_buffer->attributes[voxel->second.index].x * voxel->second.count + m_merge_buffer->attributes[i].x) / (voxel->second.count + 1);
+                        // float avg_g = (m_merge_buffer->attributes[voxel->second.index].y * voxel->second.count + m_merge_buffer->attributes[i].y) / (voxel->second.count + 1);
+                        // float avg_b = (m_merge_buffer->attributes[voxel->second.index].z * voxel->second.count + m_merge_buffer->attributes[i].z) / (voxel->second.count + 1);
+
+                        // glm::vec3 avg_color = glm::vec3(avg_r, avg_g, avg_b);
+
+                        // tmp_attributes[voxel->second.index] = avg_color;
+                        // voxel->second.count++;
+                    }
+                }
+                Logger::log(LogLevel::INFO, "VoxelMap", std::to_string(voxelMap.size()) + "\n");
+                zmq_send(positionSocket, tmp_positions.data(), voxelMap.size() * sizeof(glm::vec3), 0);
+                zmq_send(colorSocket, tmp_attributes.data(), voxelMap.size() * sizeof(glm::vec3), 0);
+
+                // zmq_send(colorSocket, m_merge_buffer->attributes, m_merge_buffer->curr_index * sizeof(glm::vec3), 0);
+                // zmq_send(positionSocket, m_merge_buffer->positions, m_merge_buffer->curr_index * sizeof(glm::vec3), 0);
                 Logger::log(LogLevel::ERROR, "Sender Zmq", std::to_string(m_merge_buffer->curr_index) + "\n");
             };
 
@@ -119,6 +156,7 @@ namespace uvgvolucap {
             std::cout << "Hello, World!" << std::endl;
             std::shared_ptr<std::vector<camera::_kinect_device_ptr>> devices = std::make_shared<std::vector<camera::_kinect_device_ptr>>();
             // bool init_success = camera::init_connected_device(devices, "C:/Users/Guillaume/workspace/uvgvolucap/asset/cameraconfig.json");
+
             bool init_success = camera::init_connected_device(devices, "C:/Users/Guillaume/workspace/Testing/ROI/cameraconfig.json");
   
   

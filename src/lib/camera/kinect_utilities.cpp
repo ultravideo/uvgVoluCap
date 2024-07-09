@@ -178,5 +178,15 @@ namespace uvgvolucap {
                 device->start_capture(thread_queue, _sync_manager);
             }
         }
+
+        void restart_connected_device() {
+            k4a_device_t device;
+            uint32_t num_devices = get_numb_connected_devices();
+            for (uint32_t i = 0; i < num_devices; i++)
+            {
+                k4a_device_open(i, &device);
+                k4a_device_close(device);
+            }
+        }
     } // namespace camera
 } // namespace uvgvolucap

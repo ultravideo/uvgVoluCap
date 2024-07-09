@@ -3,6 +3,7 @@ message(DEBUG "./src/lib/camera/cmake")
 # Define the library
 add_library(geometryLibrary STATIC
     point_cloud.cpp
+    grid.cpp
 )
 
 

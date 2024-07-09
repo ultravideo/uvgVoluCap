@@ -126,16 +126,14 @@ namespace uvgvolucap {
             {
                 m_size = m_merge_buffer->max_size - m_merge_buffer->curr_index;
             }
-            
+
             m_merge_buffer->curr_index+= (m_size);
 
             return true;
         }
 
         void PclFragment::copy_to_merge_buffer()
-        {
-             std::cout << "id: "<< m_merge_buffer->id << " - Write loc: "  << curr_start_buff_index << " to " << curr_start_buff_index + m_size << std::endl;
-                
+        {                
             memcpy(m_merge_buffer->positions + curr_start_buff_index, positions->data(), m_size * sizeof(glm::vec3));
             memcpy(m_merge_buffer->attributes + curr_start_buff_index, attributes->data(), m_size * sizeof(glm::vec3));
         }

@@ -5,6 +5,7 @@
 #include "uvgvolucap/log.hpp"
 #include "uvgvolucap/threadqueue.hpp"
 #include "geometry/point_cloud.hpp"
+#include "geometry/grid.hpp"
 #include <nlohmann/json.hpp>
 #include <k4a/k4a.hpp>
 
@@ -91,6 +92,8 @@ namespace uvgvolucap {
             std::shared_ptr<std::thread> capture_thread_ptr;
             std::function<void()> capture_function;
             std::shared_ptr<camera::SyncManager> sync_manager = nullptr;
+
+            std::shared_ptr<geometry::Grid> grid_ptr = nullptr;
 
         public:
             Kinect(uint32_t _index, std::string _serial, nlohmann::json _config);

@@ -17,9 +17,7 @@
         "min_z" : -2.0
     },
     "grid": {
-        "voxle_exp": 4,
-        "horizontal_exp" : 10,
-        "vertical_exp" : 10
+        "geometry_precision": 10
     },
     "devices_config":{
         "000442930112": {
