@@ -39,5 +39,5 @@ target_include_directories(uvgvolucap PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
 # target_compile_options(BitstreamGenerationLibrary PRIVATE -std=c++11)
 
 # Define installation destinations
-install(TARGETS uvgvolucap DESTINATION lib)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include DESTINATION include)
+# install(TARGETS uvgvolucap DESTINATION lib)
+# install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include DESTINATION include)

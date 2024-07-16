@@ -17,7 +17,6 @@ namespace uvgvolucap {
 
 			(*positions)[m_size-1] = (position);
 			(*attributes)[m_size-1] = (color);
-
 		}
 		
 		size_t PointCloud::max_size() const

@@ -8,7 +8,11 @@
         "depth_resolution": 576,
         "fps": 30,
         "depth_to_color": true,
-        "max_size": 600000 
+        "max_size": 600000,
+        "voxelized": true,
+        "voxelized_mode": 0,
+        "subsample_row": 1,
+        "subsample_col": 1
     },
     "filter": {
         "max_xy" : 2.0,

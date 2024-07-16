@@ -26,4 +26,6 @@ endif()
 # target_include_directories(cameraLibrary PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # # Optionally, add additional configurations, dependencies, or options
-target_compile_options(cameraLibrary PRIVATE -fPIC)
+if(UNIX)
+  target_compile_options(cameraLibrary PRIVATE -fPIC)
+endif()

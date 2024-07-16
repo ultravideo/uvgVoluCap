@@ -10,5 +10,7 @@ add_library(logLibrary STATIC
 )
 
 # # Optionally, add additional configurations, dependencies, or options
-target_compile_options(utilsLibrary PRIVATE -fPIC)
-target_compile_options(logLibrary PRIVATE -fPIC)
+if(UNIX)
+    target_compile_options(utilsLibrary PRIVATE -fPIC)
+    target_compile_options(logLibrary PRIVATE -fPIC)
+endif()

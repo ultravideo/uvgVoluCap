@@ -17,6 +17,10 @@ namespace uvgvolucap {
             mutable int fps = 30;
             mutable bool depth_to_color = true;
             mutable size_t max_size = 200000;
+            mutable bool voxelized = false;
+            mutable int voxelized_mode = 0;
+            mutable int subsample_row = 0;
+            mutable int subsample_col = 0;
         };
 
         struct FilterConfig {
@@ -64,6 +68,9 @@ namespace uvgvolucap {
             k4a_image_t color_image = NULL; /**< Color image */
             
             std::shared_ptr<geometry::PclFragment> fragment_pcl = std::make_shared<geometry::PclFragment>(); /**< Point cloud */
+            
+            std::mutex subspace_mx;
+            std::shared_ptr<std::vector<std::shared_ptr<geometry::PclFragment>>> subspace_fragments = std::make_shared<std::vector<std::shared_ptr<geometry::PclFragment>>>();
 
             /**
              * @brief Constructor for Data_package.
@@ -71,7 +78,12 @@ namespace uvgvolucap {
              * @param color_ The color image.
              */
             Frame(int _id, k4a_image_t depth_, k4a_image_t color_)
-                : id(_id), depth_image(depth_), color_image(color_) {}
+                : id(_id), depth_image(depth_), color_image(color_) {
+                    for (size_t i = 0; i < 8; i++)
+                    {
+                        subspace_fragments->push_back(std::make_shared<geometry::PclFragment>());
+                    }
+                }
         };
         
         class Kinect : public BasedCamera<uint32_t, std::string, nlohmann::json> {
@@ -95,6 +107,8 @@ namespace uvgvolucap {
 
             std::shared_ptr<geometry::Grid> grid_ptr = nullptr;
 
+            mutable size_t middle_bound = 0;
+
         public:
             Kinect(uint32_t _index, std::string _serial, nlohmann::json _config);
             ~Kinect() = default;
@@ -110,8 +124,14 @@ namespace uvgvolucap {
 
             void transform_view_point(std::shared_ptr<Frame> frame);
             void process_frame(std::shared_ptr<Frame> frame);
+            void process_frame_voxel_subspace(std::shared_ptr<Frame> frame);
+            void process_frame_voxel_unordermap(std::shared_ptr<Frame> frame);
             void pack_fragment(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::MergeBufferPointCloud> _asisgned_merge_buffer);
+
+            size_t classify_subspace(float x, float y, float z);
             void pointcloud_production_line();
+            void pointcloud_production_line_voxelize_with_map();
+            void pointcloud_production_line_with_subsapce();
 
         protected:
             void init(uint32_t _index, std::string _serial, nlohmann::json _config) const override;

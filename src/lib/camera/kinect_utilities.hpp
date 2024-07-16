@@ -3,6 +3,7 @@
 #define UVGVOLUCAP_CAMERA_KINECT_UTILITIES_HPP
 
 #include "kinect_camera.hpp"
+#include "debug_macro.hpp"
 
 namespace uvgvolucap {
     namespace camera{
@@ -12,6 +13,13 @@ namespace uvgvolucap {
         k4a_depth_mode_t get_depth_mode(int depth_mode);
         uint32_t get_numb_connected_devices();
         std::string get_serial_number(int device_index);
+
+        enum voxelizer_mode {
+            VOXELIZER_MAP,
+            VOXELIZER_SUBSPACE
+        };
+
+        int get_voxelizer_mode(int mode);
 
         //Test
         void restart_connected_device();

@@ -23,47 +23,21 @@ namespace uvgvolucap {
             zmq::socket_t positionSocket(context, ZMQ_PUSH);
             positionSocket.connect("tcp://localhost:5556");
 
-            std::unordered_map<VoxelCoord, VoxelData, VoxelCoordHash> voxelMap;
-
             //Lamda function for sending data
             auto send_data = [&](std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer) {
-                
-                geometry::_points_vec3 tmp_positions;
-                geometry::_attributes_vec3 tmp_attributes;
+#ifdef TIMER
+                auto start_time = std::chrono::high_resolution_clock::now();
+#endif
+                zmq_send(colorSocket, m_merge_buffer->attributes, m_merge_buffer->curr_index * sizeof(glm::vec3), 0);
+                zmq_send(positionSocket, m_merge_buffer->positions, m_merge_buffer->curr_index * sizeof(glm::vec3), 0);
 
-                voxelMap.clear();
-                size_t index = 0;
-                for (size_t i = 0; i < m_merge_buffer->curr_index; i++)
-                {
-                    VoxelCoord coord = m_merge_buffer->positions[i];
-                    auto voxel = voxelMap.find(coord);
-                    if (voxel == voxelMap.end()) {
+#ifdef TIMER
+                Logger::log(LogLevel::INFO, "Pts_nb", "number: " + std::to_string(m_merge_buffer->curr_index) + "\n");
 
-                        tmp_positions.push_back(m_merge_buffer->positions[i]);
-                        tmp_attributes.push_back(m_merge_buffer->attributes[i]);
-
-                        VoxelData data = {index, 1};
-                        voxelMap.insert({coord, data});
-                        index++;
-                    }
-                    else {
-                        // float avg_r = (m_merge_buffer->attributes[voxel->second.index].x * voxel->second.count + m_merge_buffer->attributes[i].x) / (voxel->second.count + 1);
-                        // float avg_g = (m_merge_buffer->attributes[voxel->second.index].y * voxel->second.count + m_merge_buffer->attributes[i].y) / (voxel->second.count + 1);
-                        // float avg_b = (m_merge_buffer->attributes[voxel->second.index].z * voxel->second.count + m_merge_buffer->attributes[i].z) / (voxel->second.count + 1);
-
-                        // glm::vec3 avg_color = glm::vec3(avg_r, avg_g, avg_b);
-
-                        // tmp_attributes[voxel->second.index] = avg_color;
-                        // voxel->second.count++;
-                    }
-                }
-                Logger::log(LogLevel::INFO, "VoxelMap", std::to_string(voxelMap.size()) + "\n");
-                zmq_send(positionSocket, tmp_positions.data(), voxelMap.size() * sizeof(glm::vec3), 0);
-                zmq_send(colorSocket, tmp_attributes.data(), voxelMap.size() * sizeof(glm::vec3), 0);
-
-                // zmq_send(colorSocket, m_merge_buffer->attributes, m_merge_buffer->curr_index * sizeof(glm::vec3), 0);
-                // zmq_send(positionSocket, m_merge_buffer->positions, m_merge_buffer->curr_index * sizeof(glm::vec3), 0);
-                Logger::log(LogLevel::ERROR, "Sender Zmq", std::to_string(m_merge_buffer->curr_index) + "\n");
+                auto end_time = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> elapsed_time = end_time - start_time;
+                Logger::log(LogLevel::INFO, "Sender Zmq", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
+#endif
             };
 
             std::unique_lock<std::mutex> lock(sync_manager_handler->sync_mx);
@@ -97,6 +71,8 @@ namespace uvgvolucap {
                 curr_send_job->addDependency(pre_send_job);
                 pre_send_job = curr_send_job;
             }
+
+
         }
 
         void PointCloudFactory::set_sync_limit(size_t total_cams) {
@@ -160,12 +136,19 @@ namespace uvgvolucap {
             bool init_success = camera::init_connected_device(devices, "C:/Users/Guillaume/workspace/Testing/ROI/cameraconfig.json");
   
   
-            if (!init_success) { return; }
+            if (!init_success) { 
+                Logger::log(LogLevel::ERROR, "INIT", "Initialization failed\n");
+                return; 
+            }
 
             core::PointCloudFactory factory;
             factory.set_sync_limit(devices->size()); 
             factory.start_producing(camera::start_capture, devices);
             std::cout << "Goodbye, World!" << std::endl;
+
+            for (auto &device : *devices) {
+                device->stop();
+            }
         }
     } // namespace API
 } // namespace uvgvolucap
