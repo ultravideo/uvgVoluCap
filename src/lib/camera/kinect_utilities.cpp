@@ -9,7 +9,7 @@ namespace uvgvolucap {
             // Check if the file exists
             if (!std::filesystem::exists(config_path))
             {
-                std::throw_with_nested(std::runtime_error("Config file does not exist"));
+                exit(EXIT_FAILURE);
             }
             std::ifstream file(config_path);
             nlohmann::json config = nlohmann::json::parse(file);
@@ -21,14 +21,13 @@ namespace uvgvolucap {
                 if (config.find(key) == config.end())
                 {
                     Logger::log(LogLevel::ERROR, "INIT", "Config file is missing key: " + key + "\n");
-                    std::throw_with_nested(std::runtime_error("Config file is missing key: " + key));
-                }
+exit(EXIT_FAILURE);                }
             }
 
             if (config["system"]["version"] != "0.1.0")
             {
                 Logger::log(LogLevel::ERROR, "INIT", "Config file version is not supported\n");
-                std::throw_with_nested(std::runtime_error("Config file version is not supported"));
+                exit(EXIT_FAILURE);            
             }
 
             return config;
@@ -50,7 +49,7 @@ namespace uvgvolucap {
                 break;
             default:
                 Logger::log(LogLevel::ERROR, "INIT", "Invalid input fps\n");
-                exit(1);
+                exit(EXIT_FAILURE);
                 break;
             }
             return fps;
@@ -80,7 +79,7 @@ namespace uvgvolucap {
                 break;
             default:
                 Logger::log(LogLevel::ERROR, "INIT", "Invalid input color resolution\n");
-                exit(1);
+                exit(EXIT_FAILURE);
                 break;
             }
             return color_res;
@@ -104,7 +103,7 @@ namespace uvgvolucap {
                     break;
                 default:
                     Logger::log(LogLevel::ERROR, "INIT", "Invalid input depth mode\n");
-                    exit(1);
+                    exit(EXIT_FAILURE);
                     break;
             }
             return depth_res;
@@ -127,7 +126,7 @@ namespace uvgvolucap {
             if (result != K4A_BUFFER_RESULT_SUCCEEDED)
             {
                Logger::log(LogLevel::ERROR, "INIT", "Fail to get serial number of device\n");
-               std::throw_with_nested(std::runtime_error("Fail to get serial number of device"));
+               exit(EXIT_FAILURE);
             }
 
             return std::string(serial_buf);
@@ -192,7 +191,7 @@ namespace uvgvolucap {
                 
                 default:
                     Logger::log(LogLevel::ERROR, "INIT", "Invalid voxelizer mode\n");
-                    std::throw_with_nested(std::runtime_error("Invalid voxelizer mode"));
+                    exit(EXIT_FAILURE);
                     break;
                 } 
             }

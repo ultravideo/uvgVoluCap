@@ -151,7 +151,7 @@ namespace uvgvolucap {
             {
                 stop();
                 Logger::log(LogLevel::ERROR, device_info.serial_number, "Fail to get first capture\n");
-                exit(1);
+                exit(EXIT_FAILURE);
             }
 
             createXYTable(&m_calibration);
@@ -226,9 +226,10 @@ namespace uvgvolucap {
         }
 
         size_t Kinect::classify_subspace(float x, float y, float z)
-        {
-            std::string binaryString = std::to_string(z < middle_bound) + std::to_string(y < middle_bound) + std::to_string(x < middle_bound);
-            return static_cast<size_t>(std::stoi(binaryString, 0, 2));
+        {                                             
+            // std::string binaryString = std::to_string(z < middle_bound) + std::to_string(y < middle_bound) + std::to_string(x < middle_bound);
+            // return static_cast<size_t>(std::stoi(binaryString, 0, 2));
+            return static_cast<size_t>(((z < middle_bound) << 2) + ((y < middle_bound) << 1) + (x < middle_bound));
         }
 
         void Kinect::start_capture(std::shared_ptr<ThreadQueue> _thread_queue, std::shared_ptr<SyncManager> _sync_manager)
@@ -252,17 +253,19 @@ namespace uvgvolucap {
                     
                     default:
                         Logger::log(LogLevel::ERROR, device_info.serial_number, "Invalid voxelizer mode\n");
-                        std::throw_with_nested(std::runtime_error("Invalid voxelizer mode"));
+                        exit(EXIT_FAILURE);
                         break;
                     } 
-                    
+
+                    // this->pointcloud_production_line_with_subsapce_subROI();
+  
                 }
             };
             capture_thread_ptr = std::make_shared<std::thread>(capture_function);
         }
 
         void Kinect::transform_view_point(std::shared_ptr<Frame> frame) {
-#ifdef TIMER
+#ifdef TRANSFORM_VIEWPOINT_TIMER
             auto start_time = std::chrono::high_resolution_clock::now();
 #endif
             k4a_image_t transformed_image = NULL;
@@ -276,7 +279,7 @@ namespace uvgvolucap {
 
                 if (status != K4A_RESULT_SUCCEEDED){
                     Logger::log(LogLevel::ERROR, device_info.serial_number, "Failed to create transformed image\n");                
-                    exit(1);
+                    exit(EXIT_FAILURE);
                 }
 
                 status = k4a_transformation_depth_image_to_color_camera(transformation_handle,
@@ -284,7 +287,7 @@ namespace uvgvolucap {
                                                                         transformed_image);
                 if (status != K4A_RESULT_SUCCEEDED){
                     Logger::log(LogLevel::ERROR, device_info.serial_number, "Failed to transform depth image to color camera\n");
-                    exit(1);
+                    exit(EXIT_FAILURE);
                 }
 
 
@@ -301,7 +304,7 @@ namespace uvgvolucap {
 
                 if (status != K4A_RESULT_SUCCEEDED){
                     Logger::log(LogLevel::ERROR, device_info.serial_number, "Failed to create transformed image\n");
-                    exit(1);
+                    exit(EXIT_FAILURE);
                 }
 
                 status = k4a_transformation_color_image_to_depth_camera(transformation_handle,
@@ -310,14 +313,14 @@ namespace uvgvolucap {
                                                                         transformed_image);
                 if (status != K4A_RESULT_SUCCEEDED){
                     Logger::log(LogLevel::ERROR, device_info.serial_number, "Failed to transform color image to depth camera\n");
-                    exit(1);
+                    exit(EXIT_FAILURE);
                 }
 
                 k4a_image_release(frame->color_image);
                 frame->color_image = transformed_image;
             }
 
-#ifdef TIMER
+#ifdef TRANSFORM_VIEWPOINT_TIMER
             auto end_time = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed_time = end_time - start_time;
             Logger::log(LogLevel::INFO, "transform_view_point", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
@@ -325,7 +328,7 @@ namespace uvgvolucap {
         }
 
         void Kinect::process_frame(std::shared_ptr<Frame> frame) {
-#ifdef TIMER
+#ifdef PROCESSING_TIMER
             auto start_time = std::chrono::high_resolution_clock::now();
 #endif
             int width = k4a_image_get_width_pixels(frame->depth_image);
@@ -369,7 +372,7 @@ namespace uvgvolucap {
             k4a_image_release(frame->depth_image);
             k4a_image_release(frame->color_image);
 
-#ifdef TIMER
+#ifdef PROCESSING_TIMER
             auto end_time = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed_time = end_time - start_time;
             Logger::log(LogLevel::INFO, "Process", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
@@ -377,7 +380,7 @@ namespace uvgvolucap {
         }
 
         void Kinect::process_frame_voxel_subspace(std::shared_ptr<Frame> frame) {
-#ifdef TIMER
+#ifdef PROCESSING_TIMER
             auto start_time = std::chrono::high_resolution_clock::now();
 #endif
             int width = k4a_image_get_width_pixels(frame->depth_image);
@@ -385,9 +388,6 @@ namespace uvgvolucap {
 
             uint16_t *depth_data = (uint16_t *)(void *)k4a_image_get_buffer(frame->depth_image);
             geometry::_bgra_t *color_data = (geometry::_bgra_t *)(void *)k4a_image_get_buffer(frame->color_image);
-
-            size_t index = 0;
-            std::unordered_map<geometry::VoxelCoord, geometry::VoxelData, geometry::VoxelCoordHash> voxelMap;
 
             for (size_t row = device_info.roi.start_y ; row < device_info.roi.start_y + device_info.roi.height; row = row + device_info.system_config.subsample_row) {
                 for (size_t col = device_info.roi.start_x; col < device_info.roi.start_x + device_info.roi.width; col = col + device_info.system_config.subsample_col) {
@@ -420,11 +420,59 @@ namespace uvgvolucap {
                     }
                 }
             }
-            frame->fragment_pcl->finallized();
             k4a_image_release(frame->depth_image);
             k4a_image_release(frame->color_image);
 
-#ifdef TIMER
+#ifdef PROCESSING_TIMER
+            auto end_time = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsed_time = end_time - start_time;
+            Logger::log(LogLevel::INFO, "Process", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
+#endif
+        }
+
+        void Kinect::process_frame_voxel_subspace_subROI(std::shared_ptr<Frame> frame, size_t start_x, size_t start_y, size_t width, size_t height) {
+#ifdef PROCESSING_TIMER
+            auto start_time = std::chrono::high_resolution_clock::now();
+#endif
+            int real_width = k4a_image_get_width_pixels(frame->depth_image);
+            int real_height = k4a_image_get_height_pixels(frame->depth_image);
+
+            uint16_t *depth_data = (uint16_t *)(void *)k4a_image_get_buffer(frame->depth_image);
+            geometry::_bgra_t *color_data = (geometry::_bgra_t *)(void *)k4a_image_get_buffer(frame->color_image);
+
+            for (size_t row = start_y ; row < start_y + height; row = row + device_info.system_config.subsample_row) {
+                for (size_t col = start_x; col < start_x + width; col = col + device_info.system_config.subsample_col) {
+                    size_t i = row * real_width + col;
+
+                    if (depth_data[i] != 0 && !std::isnan(xy_table_data[i].xy.x) && !std::isnan(xy_table_data[i].xy.y)) // && depth_data[i] < 1702)
+                    {
+                        uint8_t b = color_data[i].bgra.b;
+                        uint8_t g = color_data[i].bgra.g;
+                        uint8_t r = color_data[i].bgra.r;
+
+                        float z_o = static_cast<float>(depth_data[i]) / 1000.0f;
+                        float x_o = static_cast<float>((xy_table_data[i].xy.x * z_o));
+                        float y_o = static_cast<float>((xy_table_data[i].xy.y * z_o));
+
+                        float x = (device_info.transformation_matrix[0] * x_o + device_info.transformation_matrix[1] * y_o + device_info.transformation_matrix[2] * z_o + device_info.transformation_matrix[3]);
+                        float y = (device_info.transformation_matrix[4] * x_o + device_info.transformation_matrix[5] * y_o + device_info.transformation_matrix[6] * z_o + device_info.transformation_matrix[7]);
+                        float z = (device_info.transformation_matrix[8] * x_o + device_info.transformation_matrix[9] * y_o + device_info.transformation_matrix[10] * z_o + device_info.transformation_matrix[11]);
+
+                        // Filter by calculated radius
+                        if (x > device_info.filter_config.min_xy && x < device_info.filter_config.max_xy &&
+                            y > device_info.filter_config.min_xy && y < device_info.filter_config.max_xy &&
+                            z > device_info.filter_config.min_z && z < device_info.filter_config.max_z)
+                        {
+                            glm::vec3 grid_point = grid_ptr->real_to_grid(x, y, z);
+
+                            size_t subspace_id = classify_subspace(grid_point.x, grid_point.y, grid_point.z);
+                            frame->subspace_fragments->at(subspace_id)->add_point(x, y, z, r, g, b);
+                        }
+                    }
+                }
+            }
+
+#ifdef PROCESSING_TIMER
             auto end_time = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed_time = end_time - start_time;
             Logger::log(LogLevel::INFO, "Process", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
@@ -432,7 +480,7 @@ namespace uvgvolucap {
         }
 
         void Kinect::process_frame_voxel_unordermap(std::shared_ptr<Frame> frame) {
-#ifdef TIMER
+#ifdef PROCESSING_TIMER
             auto start_time = std::chrono::high_resolution_clock::now();
 #endif
             int width = k4a_image_get_width_pixels(frame->depth_image);
@@ -492,7 +540,7 @@ namespace uvgvolucap {
             k4a_image_release(frame->depth_image);
             k4a_image_release(frame->color_image);
 
-#ifdef TIMER
+#ifdef PROCESSING_TIMER
             auto end_time = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed_time = end_time - start_time;
             Logger::log(LogLevel::INFO, "Process", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
@@ -500,14 +548,14 @@ namespace uvgvolucap {
         }
 
         void Kinect::pack_fragment(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::MergeBufferPointCloud> _asisgned_merge_buffer) {
-#ifdef TIMER
+#ifdef PACKING_TIMER
             auto start_time = std::chrono::high_resolution_clock::now();
 #endif
             if (fragment_pcl->prep_to_merge_buffer(_asisgned_merge_buffer)) {
                 fragment_pcl->copy_to_merge_buffer();
             }
 
-#ifdef TIMER
+#ifdef PACKING_TIMER
             auto end_time = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed_time = end_time - start_time;
             Logger::log(LogLevel::INFO, "pack_fragment", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
@@ -520,7 +568,7 @@ namespace uvgvolucap {
             if (sync_manager == nullptr)
             {
                 Logger::log(LogLevel::ERROR, device_info.serial_number, "Sync manager is not assigned\n");
-                exit(1);
+                exit(EXIT_FAILURE);
                 return;
             }
 
@@ -538,7 +586,7 @@ namespace uvgvolucap {
                     return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.index)) != 0;
                 });
                 
-#ifdef TIMER
+#ifdef SETUP_LINE_TIMER
                 auto start_time = std::chrono::high_resolution_clock::now();
 #endif
                 k4a_capture_t capture;
@@ -557,7 +605,7 @@ namespace uvgvolucap {
                                                                         );
                     frame->fragment_pcl = std::make_shared<geometry::PclFragment>();
 
-#ifdef TIMER
+#ifdef SETUP_LINE_TIMER
                     auto end_time = std::chrono::high_resolution_clock::now();
                     std::chrono::duration<double> elapsed_time = end_time - start_time;
                     Logger::log(LogLevel::INFO, "Capture", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
@@ -581,13 +629,13 @@ namespace uvgvolucap {
                     k4a_capture_release(capture);
                     stop();
                     Logger::log(LogLevel::ERROR, device_info.serial_number, "Fail to get capture\n");
-                    std::throw_with_nested(std::runtime_error("Fail to get capture"));
+                    exit(EXIT_FAILURE);
                 }
 
                 k4a_capture_release(capture);
                 (*sync_manager->update_device_ready_fptr)(device_info.index, false);
 
-#ifdef TIMER
+#ifdef SETUP_LINE_TIMER
                 auto end_time = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double> elapsed_time = end_time - start_time;
                 Logger::log(LogLevel::INFO, "Setup for 1 frame", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
@@ -616,7 +664,7 @@ namespace uvgvolucap {
                     return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.index)) != 0;
                 });
                 
-#ifdef TIMER
+#ifdef SETUP_LINE_TIMER
                 auto start_time = std::chrono::high_resolution_clock::now();
 #endif
                 k4a_capture_t capture;
@@ -634,7 +682,7 @@ namespace uvgvolucap {
                                                                             color_image
                                                                         );
 
-#ifdef TIMER
+#ifdef SETUP_LINE_TIMER
                     auto end_time = std::chrono::high_resolution_clock::now();
                     std::chrono::duration<double> elapsed_time = end_time - start_time;
                     Logger::log(LogLevel::INFO, "Capture", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
@@ -664,13 +712,13 @@ namespace uvgvolucap {
                     k4a_capture_release(capture);
                     stop();
                     Logger::log(LogLevel::ERROR, device_info.serial_number, "Fail to get capture\n");
-                    std::throw_with_nested(std::runtime_error("Fail to get capture"));
+                    exit(EXIT_FAILURE);
                 }
 
                 k4a_capture_release(capture);
                 (*sync_manager->update_device_ready_fptr)(device_info.index, false);
 
-#ifdef TIMER
+#ifdef SETUP_LINE_TIMER
                 auto end_time = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double> elapsed_time = end_time - start_time;
                 Logger::log(LogLevel::INFO, "Setup for 1 frame", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
@@ -699,7 +747,7 @@ namespace uvgvolucap {
                     return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.index)) != 0;
                 });
                 
-#ifdef TIMER
+#ifdef SETUP_LINE_TIMER
                 auto start_time = std::chrono::high_resolution_clock::now();
 #endif
                 k4a_capture_t capture;
@@ -717,7 +765,7 @@ namespace uvgvolucap {
                                                                             color_image
                                                                         );
 
-#ifdef TIMER
+#ifdef SETUP_LINE_TIMER
                     auto end_time = std::chrono::high_resolution_clock::now();
                     std::chrono::duration<double> elapsed_time = end_time - start_time;
                     Logger::log(LogLevel::INFO, "Capture", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
@@ -739,18 +787,129 @@ namespace uvgvolucap {
                     k4a_capture_release(capture);
                     stop();
                     Logger::log(LogLevel::ERROR, device_info.serial_number, "Fail to get capture\n");
-                    std::throw_with_nested(std::runtime_error("Fail to get capture"));
+                    exit(EXIT_FAILURE);
                 }
 
                 k4a_capture_release(capture);
                 (*sync_manager->update_device_ready_fptr)(device_info.index, false);
 
-#ifdef TIMER
+#ifdef SETUP_LINE_TIMER
                 auto end_time = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double> elapsed_time = end_time - start_time;
                 Logger::log(LogLevel::INFO, "Setup for 1 frame", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
 #endif
             }
+        }
+    
+        void Kinect::release_frame(std::shared_ptr<Frame> frame) {
+            k4a_image_release(frame->depth_image);
+            k4a_image_release(frame->color_image);
+        }
+
+        void Kinect::pointcloud_production_line_with_subsapce_subROI() {
+            if (sync_manager == nullptr)
+            {
+                Logger::log(LogLevel::ERROR, device_info.serial_number, "Sync manager is not assigned\n");
+                return;
+            }
+
+            int frame_count = 0;
+            k4a_wait_result_t result = K4A_WAIT_RESULT_TIMEOUT;
+            std::unique_lock<std::mutex> lock(sync_manager->sync_mx);
+
+            warm_up();
+            (*sync_manager->update_device_ready_fptr)(device_info.index, false);
+
+            while (is_started_flag)
+            {
+                sync_manager->Cap_permission_cv.wait(lock, [&]()
+                {
+                    return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.index)) != 0;
+                });
+                
+#ifdef SETUP_LINE_TIMER
+                auto start_time = std::chrono::high_resolution_clock::now();
+#endif
+                k4a_capture_t capture;
+                result = k4a_device_get_capture(m_device, &capture, 500);
+                if (result == K4A_WAIT_RESULT_SUCCEEDED)
+                {
+                    (*sync_manager->update_device_capture_fptr)(device_info.index, false);
+                    // Capture and process the frames
+                    k4a_image_t depth_image = k4a_capture_get_depth_image(capture);
+                    k4a_image_t color_image = k4a_capture_get_color_image(capture);
+
+                    // Form the frame
+                    std::shared_ptr<Frame> frame = std::make_shared<Frame>( frame_count, 
+                                                                            depth_image, 
+                                                                            color_image
+                                                                        );
+
+#ifdef SETUP_LINE_TIMER
+                    auto end_time = std::chrono::high_resolution_clock::now();
+                    std::chrono::duration<double> elapsed_time = end_time - start_time;
+                    Logger::log(LogLevel::INFO, "Capture", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
+#endif
+                    std::shared_ptr<geometry::MergeBufferPointCloud> assigned_merge_buffer = sync_manager->m_merge_buffer;
+                    auto transf_vp_job = std::make_shared<uvgvolucap::Job>("TransformViewPoint", 0, &Kinect::transform_view_point, this, frame);
+
+                    // Process subROI - ROI is divided into 4 subROIs
+                    size_t width_padding = device_info.roi.width / 2;
+                    size_t height_padding = device_info.roi.height / 2;
+                    auto process_frame_job_p1 = std::make_shared<uvgvolucap::Job>("ProcessFrame", 1, &Kinect::process_frame_voxel_subspace_subROI, this, frame, device_info.roi.start_x + width_padding*0, device_info.roi.start_y + height_padding*0, device_info.roi.width / 2, device_info.roi.height / 2);
+                    // auto process_frame_job_p2 = std::make_shared<uvgvolucap::Job>("ProcessFrame", 1, &Kinect::process_frame_voxel_subspace_subROI, this, frame, device_info.roi.start_x + width_padding*0, device_info.roi.start_y + height_padding*1, device_info.roi.width / 2, device_info.roi.height / 2);
+                    // auto process_frame_job_p3 = std::make_shared<uvgvolucap::Job>("ProcessFrame", 1, &Kinect::process_frame_voxel_subspace_subROI, this, frame, device_info.roi.start_x + width_padding*1, device_info.roi.start_y + height_padding*0, device_info.roi.width / 2, device_info.roi.height / 2);
+                    // auto process_frame_job_p4 = std::make_shared<uvgvolucap::Job>("ProcessFrame", 1, &Kinect::process_frame_voxel_subspace_subROI, this, frame, device_info.roi.start_x + width_padding*1, device_info.roi.start_y + height_padding*1, device_info.roi.width / 2, device_info.roi.height / 2);
+
+                    process_frame_job_p1->addDependency(transf_vp_job);
+                    // process_frame_job_p2->addDependency(transf_vp_job);
+                    // process_frame_job_p3->addDependency(transf_vp_job);
+                    // process_frame_job_p4->addDependency(transf_vp_job);
+
+                    auto release_source_job = std::make_shared<uvgvolucap::Job>("ReleaseFrame", 2, &Kinect::release_frame, this, frame);
+
+                    release_source_job->addDependency(process_frame_job_p1);
+                    // release_source_job->addDependency(process_frame_job_p2);
+                    // release_source_job->addDependency(process_frame_job_p3);
+                    // release_source_job->addDependency(process_frame_job_p4);
+
+                    std::vector<std::shared_ptr<uvgvolucap::Job>> subspace_jobs = std::vector<std::shared_ptr<uvgvolucap::Job>>();
+                    for (size_t i = 0; i < 8; i++) {
+                        auto pack_fragment_job = std::make_shared<uvgvolucap::Job>("PackFragment", 3, &Kinect::pack_fragment, this, frame->subspace_fragments->at(i), assigned_merge_buffer); 
+                        pack_fragment_job->addDependency(release_source_job);
+                        sync_manager->send_job->addDependency(pack_fragment_job);   
+                        subspace_jobs.push_back(pack_fragment_job);
+                    }
+
+                    thread_queue->submitJob(transf_vp_job);
+                    thread_queue->submitJob(process_frame_job_p1);
+                    // thread_queue->submitJob(process_frame_job_p2);
+                    // thread_queue->submitJob(process_frame_job_p3);
+                    // thread_queue->submitJob(process_frame_job_p4);
+
+                    thread_queue->submitJob(release_source_job);
+                    
+                    for (size_t i = 0; i < 8; i++) {
+                        thread_queue->submitJob(subspace_jobs[i]);
+                    }
+                }
+                else if (result == K4A_WAIT_RESULT_FAILED)
+                {
+                    k4a_capture_release(capture);
+                    stop();
+                    Logger::log(LogLevel::ERROR, device_info.serial_number, "Fail to get capture\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                k4a_capture_release(capture);
+                (*sync_manager->update_device_ready_fptr)(device_info.index, false);
+
+#ifdef SETUP_LINE_TIMER
+                auto end_time = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> elapsed_time = end_time - start_time;
+                Logger::log(LogLevel::INFO, "Setup for 1 frame", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
+#endif
+            }  
         }
     } // namespace camera
 }   // namespace uvgvolucap

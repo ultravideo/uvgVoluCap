@@ -64,6 +64,8 @@ namespace uvgvolucap {
             _points_vec3_ptr positions  = std::make_shared<_points_vec3>();
 			_attributes_vec3_ptr attributes = std::make_shared<_attributes_vec3>();
 
+            std::mutex add_point_mx;
+
 		public:
 			PointCloud() = default;
 			~PointCloud() = default;

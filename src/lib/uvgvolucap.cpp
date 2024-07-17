@@ -25,13 +25,17 @@ namespace uvgvolucap {
 
             //Lamda function for sending data
             auto send_data = [&](std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer) {
-#ifdef TIMER
+#ifdef SENDER_TIMER
                 auto start_time = std::chrono::high_resolution_clock::now();
 #endif
                 zmq_send(colorSocket, m_merge_buffer->attributes, m_merge_buffer->curr_index * sizeof(glm::vec3), 0);
                 zmq_send(positionSocket, m_merge_buffer->positions, m_merge_buffer->curr_index * sizeof(glm::vec3), 0);
 
-#ifdef TIMER
+#ifdef FINAL_NUMBER_DEBUG
+                Logger::log(LogLevel::INFO, "Pts_nb", "number: " + std::to_string(m_merge_buffer->curr_index) + "\n");
+#endif
+
+#ifdef SENDER_TIMER
                 Logger::log(LogLevel::INFO, "Pts_nb", "number: " + std::to_string(m_merge_buffer->curr_index) + "\n");
 
                 auto end_time = std::chrono::high_resolution_clock::now();
@@ -129,9 +133,7 @@ namespace uvgvolucap {
 
     namespace API {
         void test() {
-            std::cout << "Hello, World!" << std::endl;
             std::shared_ptr<std::vector<camera::_kinect_device_ptr>> devices = std::make_shared<std::vector<camera::_kinect_device_ptr>>();
-            // bool init_success = camera::init_connected_device(devices, "C:/Users/Guillaume/workspace/uvgvolucap/asset/cameraconfig.json");
 
             bool init_success = camera::init_connected_device(devices, "C:/Users/Guillaume/workspace/Testing/ROI/cameraconfig.json");
   
@@ -144,7 +146,6 @@ namespace uvgvolucap {
             core::PointCloudFactory factory;
             factory.set_sync_limit(devices->size()); 
             factory.start_producing(camera::start_capture, devices);
-            std::cout << "Goodbye, World!" << std::endl;
 
             for (auto &device : *devices) {
                 device->stop();

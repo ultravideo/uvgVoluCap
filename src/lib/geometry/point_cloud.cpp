@@ -9,6 +9,8 @@ namespace uvgvolucap {
 			glm::vec3 position{x, y, z};
 			glm::vec3 color{r/255.0f, g/255.0f, b/255.0f};
 
+			std::lock_guard<std::mutex> lock(add_point_mx);
+
 			m_size++;
 			if (positions->size() < m_size){
 				positions->resize(positions->size()*2+1);

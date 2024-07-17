@@ -4,5 +4,17 @@
 #define DEBUG_TOOL
 // #define TIMER
 
+// #define TRANSFORM_VIEWPOINT_TIMER
+
+#define PROCESSING_TIMER
+
+// #define PACKING_TIMER
+
+// #define SENDER_TIMER
+
+#define FINAL_NUMBER_DEBUG
+
+// #define SETUP_LINE_TIMER
+
 
 #endif // DEBUG_MACRO_HPP

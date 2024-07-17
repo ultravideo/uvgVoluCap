@@ -133,6 +133,10 @@ namespace uvgvolucap {
             void pointcloud_production_line_voxelize_with_map();
             void pointcloud_production_line_with_subsapce();
 
+            //@Test
+            void release_frame(std::shared_ptr<Frame> frame);
+            void process_frame_voxel_subspace_subROI(std::shared_ptr<Frame> frame, size_t start_x, size_t start_y, size_t width, size_t height);
+            void pointcloud_production_line_with_subsapce_subROI();
         protected:
             void init(uint32_t _index, std::string _serial, nlohmann::json _config) const override;
             void open() override;

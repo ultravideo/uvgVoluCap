@@ -14,7 +14,7 @@ namespace uvgvolucap {
     namespace core {
         class PointCloudFactory {
         private:
-            std::shared_ptr<uvgvolucap::ThreadQueue> thread_queue = std::make_shared<uvgvolucap::ThreadQueue>(20);
+            std::shared_ptr<uvgvolucap::ThreadQueue> thread_queue = std::make_shared<uvgvolucap::ThreadQueue>(60);
 
             int gen_ID = 0;
             int limit = 0;
