@@ -16,7 +16,6 @@ namespace uvgvolucap {
             mutable int depth_resolution = 576;
             mutable int fps = 30;
             mutable bool depth_to_color = true;
-            mutable size_t max_size = 200000;
             mutable bool voxelized = false;
             mutable int voxelized_mode = 0;
             mutable int subsample_row = 0;
@@ -54,6 +53,7 @@ namespace uvgvolucap {
         struct KinectCameraInfo {
             mutable std::string serial_number = "";
             mutable int index = 0;
+            mutable int sync_index = 0;
 
             MainSetting system_config;
             FilterConfig filter_config;
@@ -86,7 +86,7 @@ namespace uvgvolucap {
                 }
         };
         
-        class Kinect : public BasedCamera<uint32_t, std::string, nlohmann::json> {
+        class Kinect : public BasedCamera<uint32_t, uint32_t, std::string, nlohmann::json> {
         private:
             k4a_device_t m_device;
             k4a_device_configuration_t m_config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
@@ -110,7 +110,7 @@ namespace uvgvolucap {
             mutable size_t middle_bound = 0;
 
         public:
-            Kinect(uint32_t _index, std::string _serial, nlohmann::json _config);
+            Kinect(uint32_t _index, uint32_t sync_index, std::string _serial, nlohmann::json _config);
             ~Kinect() = default;
 
             std::string get_serial_number();
@@ -138,7 +138,7 @@ namespace uvgvolucap {
             void process_frame_voxel_subspace_subROI(std::shared_ptr<Frame> frame, size_t start_x, size_t start_y, size_t width, size_t height);
             void pointcloud_production_line_with_subsapce_subROI();
         protected:
-            void init(uint32_t _index, std::string _serial, nlohmann::json _config) const override;
+            void init(uint32_t _index, uint32_t _sync_index, std::string _serial, nlohmann::json _config) const override;
             void open() override;
             void close() override;
             void start() override;

@@ -152,7 +152,7 @@ exit(EXIT_FAILURE);                }
             devices->reserve(num_devices);
 
             Logger::log(LogLevel::INFO, "INIT", "Found " + std::to_string(num_devices) +  " device\n");
-
+            uint32_t register_device = 0;
             for (uint32_t i = 0; i < num_devices; i++)
             {
                 std::string serial = get_serial_by_index(i);
@@ -160,7 +160,8 @@ exit(EXIT_FAILURE);                }
                 if (config_params["devices_config"].find(serial) != config_params["devices_config"].end())
                 {
                     if (!config_params["devices_config"][serial].at("disabled").get<bool>()) {                
-                        devices->push_back(std::make_shared<Kinect>(i, serial, config_params));
+                        devices->push_back(std::make_shared<Kinect>(i, register_device, serial, config_params));
+                        register_device++;
                     }
                     else {
                         Logger::log(LogLevel::INFO, "INIT", "Device with serial number: " + serial + " is disabled by configuration\n");
@@ -172,6 +173,8 @@ exit(EXIT_FAILURE);                }
                     return false;
                 }
             }
+
+            devices->resize(static_cast<size_t>(register_device));
 
             std::string system_config = std::to_string(config_params["setting"]["fps"].get<int>()) + " fps, "
                                         + std::to_string(config_params["setting"]["color_resolution"].get<int>()) + " color, " 
@@ -194,6 +197,13 @@ exit(EXIT_FAILURE);                }
                     exit(EXIT_FAILURE);
                     break;
                 } 
+
+                if(config_params["setting"]["depth_to_color"].get<bool>()) {
+                    Logger::log(LogLevel::INFO, "INIT", "Depth to color mode is enabled\n");
+                }
+                else {
+                    Logger::log(LogLevel::INFO, "INIT", "Depth to color mode is disabled\n");
+                }
             }
             else
             {

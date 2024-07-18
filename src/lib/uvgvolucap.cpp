@@ -24,7 +24,9 @@ namespace uvgvolucap {
             positionSocket.connect("tcp://localhost:5556");
 
             //Lamda function for sending data
+
             auto send_data = [&](std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer) {
+                //Send data
 #ifdef SENDER_TIMER
                 auto start_time = std::chrono::high_resolution_clock::now();
 #endif
@@ -36,12 +38,11 @@ namespace uvgvolucap {
 #endif
 
 #ifdef SENDER_TIMER
-                Logger::log(LogLevel::INFO, "Pts_nb", "number: " + std::to_string(m_merge_buffer->curr_index) + "\n");
-
                 auto end_time = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double> elapsed_time = end_time - start_time;
                 Logger::log(LogLevel::INFO, "Sender Zmq", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
 #endif
+
             };
 
             std::unique_lock<std::mutex> lock(sync_manager_handler->sync_mx);

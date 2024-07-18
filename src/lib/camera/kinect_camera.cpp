@@ -4,9 +4,9 @@
 
 namespace uvgvolucap {
     namespace camera{
-        Kinect::Kinect(uint32_t _index, std::string _serial, nlohmann::json _config) : BasedCamera()
+        Kinect::Kinect(uint32_t _index, uint32_t _sync_index, std::string _serial, nlohmann::json _config) : BasedCamera()
         {
-            init(_index, _serial, _config);
+            init(_index, _sync_index, _serial, _config);
             setup_device_config();
 
             auto grid_attribute = _config["grid"];
@@ -14,9 +14,10 @@ namespace uvgvolucap {
             grid_ptr->set_real_world_params(device_info.filter_config.max_xy, device_info.filter_config.min_xy, device_info.filter_config.max_z, device_info.filter_config.min_z);
         }
 
-        void Kinect::init(uint32_t _index, std::string _serial, nlohmann::json _config) const
+        void Kinect::init(uint32_t _index, uint32_t _sync_index, std::string _serial, nlohmann::json _config) const
         {
             device_info.index = _index;
+            device_info.sync_index = _sync_index;
             device_info.serial_number = _serial;
             middle_bound = static_cast<size_t>(std::pow(2,  _config["grid"]["geometry_precision"] - 1));
 
@@ -24,7 +25,6 @@ namespace uvgvolucap {
             device_info.system_config.depth_resolution = _config["setting"]["depth_resolution"].get<int>();
             device_info.system_config.fps = _config["setting"]["fps"].get<int>();
             device_info.system_config.depth_to_color = _config["setting"]["depth_to_color"].get<bool>();
-            device_info.system_config.max_size = _config["setting"]["max_size"].get<size_t>();
             device_info.system_config.voxelized = _config["setting"]["voxelized"].get<bool>();
             device_info.system_config.voxelized_mode = _config["setting"]["voxelized_mode"].get<int>();
             device_info.system_config.subsample_row = _config["setting"]["subsample_row"].get<int>();
@@ -174,6 +174,10 @@ namespace uvgvolucap {
             {
                 target_viewpoint_width = calibration->depth_camera_calibration.resolution_width;
                 target_viewpoint_height = calibration->depth_camera_calibration.resolution_height;
+                device_info.roi.start_x = 0;
+                device_info.roi.start_y = 0;
+                device_info.roi.width = target_viewpoint_width;
+                device_info.roi.height = target_viewpoint_height;
             }
 
             k4a_result_t status;
@@ -577,13 +581,13 @@ namespace uvgvolucap {
             std::unique_lock<std::mutex> lock(sync_manager->sync_mx);
 
             warm_up();
-            (*sync_manager->update_device_ready_fptr)(device_info.index, false);
+            (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
 
             while (is_started_flag)
             {
                 sync_manager->Cap_permission_cv.wait(lock, [&]()
                 {
-                    return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.index)) != 0;
+                    return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.sync_index)) != 0;
                 });
                 
 #ifdef SETUP_LINE_TIMER
@@ -593,7 +597,8 @@ namespace uvgvolucap {
                 result = k4a_device_get_capture(m_device, &capture, 500);
                 if (result == K4A_WAIT_RESULT_SUCCEEDED)
                 {
-                    (*sync_manager->update_device_capture_fptr)(device_info.index, false);
+                    (*sync_manager->update_device_capture_fptr)(device_info.sync_index, false);
+
                     // Capture and process the frames
                     k4a_image_t depth_image = k4a_capture_get_depth_image(capture);
                     k4a_image_t color_image = k4a_capture_get_color_image(capture);
@@ -633,7 +638,7 @@ namespace uvgvolucap {
                 }
 
                 k4a_capture_release(capture);
-                (*sync_manager->update_device_ready_fptr)(device_info.index, false);
+                (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
 
 #ifdef SETUP_LINE_TIMER
                 auto end_time = std::chrono::high_resolution_clock::now();
@@ -655,23 +660,24 @@ namespace uvgvolucap {
             std::unique_lock<std::mutex> lock(sync_manager->sync_mx);
 
             warm_up();
-            (*sync_manager->update_device_ready_fptr)(device_info.index, false);
-
+            (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
+auto start_time_fps = std::chrono::high_resolution_clock::now();
             while (is_started_flag)
             {
-                sync_manager->Cap_permission_cv.wait(lock, [&]()
-                {
-                    return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.index)) != 0;
-                });
-                
 #ifdef SETUP_LINE_TIMER
                 auto start_time = std::chrono::high_resolution_clock::now();
 #endif
+                sync_manager->Cap_permission_cv.wait(lock, [&]()
+                {
+                    return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.sync_index)) != 0;
+                });
+        
                 k4a_capture_t capture;
                 result = k4a_device_get_capture(m_device, &capture, 500);
                 if (result == K4A_WAIT_RESULT_SUCCEEDED)
                 {
-                    (*sync_manager->update_device_capture_fptr)(device_info.index, false);
+                    (*sync_manager->update_device_capture_fptr)(device_info.sync_index, false);
+                    
                     // Capture and process the frames
                     k4a_image_t depth_image = k4a_capture_get_depth_image(capture);
                     k4a_image_t color_image = k4a_capture_get_color_image(capture);
@@ -682,11 +688,6 @@ namespace uvgvolucap {
                                                                             color_image
                                                                         );
 
-#ifdef SETUP_LINE_TIMER
-                    auto end_time = std::chrono::high_resolution_clock::now();
-                    std::chrono::duration<double> elapsed_time = end_time - start_time;
-                    Logger::log(LogLevel::INFO, "Capture", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
-#endif
                     std::shared_ptr<geometry::MergeBufferPointCloud> assigned_merge_buffer = sync_manager->m_merge_buffer;
                     auto transf_vp_job = std::make_shared<uvgvolucap::Job>("TransformViewPoint", 0, &Kinect::transform_view_point, this, frame);
                     auto process_frame_job = std::make_shared<uvgvolucap::Job>("ProcessFrame", 1, &Kinect::process_frame_voxel_subspace, this, frame);
@@ -716,12 +717,18 @@ namespace uvgvolucap {
                 }
 
                 k4a_capture_release(capture);
-                (*sync_manager->update_device_ready_fptr)(device_info.index, false);
+                (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
 
 #ifdef SETUP_LINE_TIMER
                 auto end_time = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double> elapsed_time = end_time - start_time;
-                Logger::log(LogLevel::INFO, "Setup for 1 frame", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
+                Logger::log(LogLevel::INFO, "Capture - " + device_info.serial_number, "Elapsed time of frame " + std::to_string(frame_count)+ " : " + std::to_string(elapsed_time.count()) + "s\n");
+
+
+                auto end_time_fps = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> elapsed_time_fps = end_time_fps - start_time_fps;
+                Logger::log(LogLevel::INFO, "Capture FPS - " + device_info.serial_number + "  " + std::to_string(frame_count), std::to_string(frame_count / elapsed_time_fps.count()) + "fps\n");
+                frame_count++;
 #endif
             }
         }
@@ -738,13 +745,13 @@ namespace uvgvolucap {
             std::unique_lock<std::mutex> lock(sync_manager->sync_mx);
 
             warm_up();
-            (*sync_manager->update_device_ready_fptr)(device_info.index, false);
+            (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
 
             while (is_started_flag)
             {
                 sync_manager->Cap_permission_cv.wait(lock, [&]()
                 {
-                    return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.index)) != 0;
+                    return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.sync_index)) != 0;
                 });
                 
 #ifdef SETUP_LINE_TIMER
@@ -754,7 +761,7 @@ namespace uvgvolucap {
                 result = k4a_device_get_capture(m_device, &capture, 500);
                 if (result == K4A_WAIT_RESULT_SUCCEEDED)
                 {
-                    (*sync_manager->update_device_capture_fptr)(device_info.index, false);
+                    (*sync_manager->update_device_capture_fptr)(device_info.sync_index, false);
                     // Capture and process the frames
                     k4a_image_t depth_image = k4a_capture_get_depth_image(capture);
                     k4a_image_t color_image = k4a_capture_get_color_image(capture);
@@ -791,7 +798,7 @@ namespace uvgvolucap {
                 }
 
                 k4a_capture_release(capture);
-                (*sync_manager->update_device_ready_fptr)(device_info.index, false);
+                (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
 
 #ifdef SETUP_LINE_TIMER
                 auto end_time = std::chrono::high_resolution_clock::now();
@@ -818,13 +825,13 @@ namespace uvgvolucap {
             std::unique_lock<std::mutex> lock(sync_manager->sync_mx);
 
             warm_up();
-            (*sync_manager->update_device_ready_fptr)(device_info.index, false);
+            (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
 
             while (is_started_flag)
             {
                 sync_manager->Cap_permission_cv.wait(lock, [&]()
                 {
-                    return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.index)) != 0;
+                    return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.sync_index)) != 0;
                 });
                 
 #ifdef SETUP_LINE_TIMER
@@ -834,7 +841,7 @@ namespace uvgvolucap {
                 result = k4a_device_get_capture(m_device, &capture, 500);
                 if (result == K4A_WAIT_RESULT_SUCCEEDED)
                 {
-                    (*sync_manager->update_device_capture_fptr)(device_info.index, false);
+                    (*sync_manager->update_device_capture_fptr)(device_info.sync_index, false);
                     // Capture and process the frames
                     k4a_image_t depth_image = k4a_capture_get_depth_image(capture);
                     k4a_image_t color_image = k4a_capture_get_color_image(capture);
@@ -902,7 +909,7 @@ namespace uvgvolucap {
                 }
 
                 k4a_capture_release(capture);
-                (*sync_manager->update_device_ready_fptr)(device_info.index, false);
+                (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
 
 #ifdef SETUP_LINE_TIMER
                 auto end_time = std::chrono::high_resolution_clock::now();

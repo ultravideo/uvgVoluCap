@@ -101,8 +101,6 @@ namespace uvgvolucap {
         PclFragment::PclFragment() : PointCloud()
         {
             m_size = 0; 
-            positions->resize(m_max_size); 
-            attributes->resize(m_max_size);
         }
 
         PclFragment::~PclFragment() 
@@ -128,7 +126,7 @@ namespace uvgvolucap {
                 m_size = m_merge_buffer->max_size - m_merge_buffer->curr_index;
             }
 
-            m_merge_buffer->curr_index+= (m_size);
+            m_merge_buffer->curr_index+=(m_size);
 
             return true;
         }
@@ -137,6 +135,8 @@ namespace uvgvolucap {
         {                
             memcpy(m_merge_buffer->positions + curr_start_buff_index, positions->data(), m_size * sizeof(glm::vec3));
             memcpy(m_merge_buffer->attributes + curr_start_buff_index, attributes->data(), m_size * sizeof(glm::vec3));
+			positions->clear();
+			attributes->clear();
         }
 
     } // namespace geometry
