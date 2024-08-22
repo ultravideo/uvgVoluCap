@@ -88,12 +88,10 @@ namespace uvgvolucap {
                     Logger::log(LogLevel::INFO, "System", "Created Frames: " + std::to_string(sync_manager_handler->count_pcl) + "\n");
                     Logger::log(LogLevel::INFO, "System", "Sent Frames: " + std::to_string(sent_frame_count) + "\n");
                     
-                    break;
+                    stop_flag = true;
                 }
 #endif
             }
-
-            exit(EXIT_SUCCESS); // Exit the program
         }
 
         void PointCloudFactory::set_sync_limit(size_t total_cams) {
@@ -145,6 +143,7 @@ namespace uvgvolucap {
             std::function<void()> f = std::bind(std::forward<Func>(func), std::forward<Args>(args)..., thread_queue, sync_manager_handler);
             f();
             execute_sync();
+            thread_queue->stop();
         }
     }
 
@@ -152,9 +151,7 @@ namespace uvgvolucap {
         void test() {
             std::shared_ptr<std::vector<camera::_kinect_device_ptr>> devices = std::make_shared<std::vector<camera::_kinect_device_ptr>>();
 
-            bool init_success = camera::init_connected_device(devices, "C:/Users/Guillaume/workspace/Testing/ROI/cameraconfig.json");
-  
-  
+            bool init_success = camera::init_connected_device(devices, "C:/Users/Guillaume/workspace/Testing/ROI/cameraconfig.json");  
             if (!init_success) { 
                 Logger::log(LogLevel::ERROR, "INIT", "Initialization failed\n");
                 return; 
@@ -164,9 +161,12 @@ namespace uvgvolucap {
             factory.set_sync_limit(devices->size()); 
             factory.start_producing(camera::start_capture, devices);
 
-            for (auto &device : *devices) {
+            for (auto& device : *devices) {
                 device->stop();
             }
+
+            Logger::log(LogLevel::INFO, "TEST", "Test finished\n");
+            exit(EXIT_SUCCESS);
         }
     } // namespace API
 } // namespace uvgvolucap
