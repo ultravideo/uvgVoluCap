@@ -84,3 +84,30 @@ add_custom_target(format
 #         VERBATIM
 #     )
 # endif()
+
+# Define installation destinations
+set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/build/bin" CACHE PATH "Install path prefix" FORCE)
+
+add_custom_target(PrintConfig ALL
+    COMMAND ${CMAKE_COMMAND} -E echo "Build configuration: $<CONFIG>"
+)
+
+set(INSTALL_CONFIG_DIR "Release")
+
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    set(INSTALL_CONFIG_DIR "Debug")
+elseif(CMAKE_BUILD_TYPE MATCHES Release)
+    set(INSTALL_CONFIG_DIR "Release")
+elseif(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo)
+    set(INSTALL_CONFIG_DIR "RelWithDebInfo")
+elseif(CMAKE_BUILD_TYPE MATCHES MinSizeRel)
+    set(INSTALL_CONFIG_DIR "MinSizeRel")
+endif()
+
+message(STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "CMAKE_GENERATOR: ${CMAKE_GENERATOR}")
+message(STATUS "INSTALL_CONFIG_DIR: ${INSTALL_CONFIG_DIR}")
+
+install(DIRECTORY ${CMAKE_BINARY_DIR}/src/app/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(DIRECTORY ${CMAKE_BINARY_DIR}/src/lib/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/asset DESTINATION ${CMAKE_INSTALL_PREFIX})

@@ -12,4 +12,4 @@ set(CMAKE_CXX_CLANG_TIDY "")
 target_link_libraries(uvgVoluCap uvgvolucap)
 
 # Define installation destinations
-install(TARGETS uvgVoluCap DESTINATION bin)
+# install(TARGETS uvgVoluCap DESTINATION bin)

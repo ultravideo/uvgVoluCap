@@ -6,9 +6,29 @@
 #include <vector>
 #include <memory>
 #include <mutex>
-
+#include <unordered_map>
+#include <unordered_set>
 namespace uvgvolucap {
     namespace geometry {
+
+        /* Test */
+        struct VoxelData {
+            size_t index;
+            int count;
+        };
+
+        using VoxelCoord = glm::vec3;
+
+        // Define a hash function for VoxelCoord
+        struct VoxelCoordHash {
+            std::size_t operator()(const VoxelCoord& coord) const {
+                std::size_t hx = std::hash<std::size_t>()(static_cast<std::size_t>(coord.x));
+                std::size_t hy = std::hash<std::size_t>()(static_cast<std::size_t>(coord.y));
+                std::size_t hz = std::hash<std::size_t>()(static_cast<std::size_t>(coord.z));
+                return hx ^ (hy << 1) ^ (hz << 2);  // Combine the hashes
+            }
+        };
+
         /**
 		 * @brief Union representing a vector in BGRA format or as an array.
 		 */
@@ -44,6 +64,8 @@ namespace uvgvolucap {
             _points_vec3_ptr positions  = std::make_shared<_points_vec3>();
 			_attributes_vec3_ptr attributes = std::make_shared<_attributes_vec3>();
 
+            std::mutex add_point_mx;
+
 		public:
 			PointCloud() = default;
 			~PointCloud() = default;
@@ -76,7 +98,7 @@ namespace uvgvolucap {
 
         struct MergeBufferPointCloud {
             int id = 0;
-            static const size_t max_size = 900000;
+            static const size_t max_size = 1000000;
             glm::vec3 positions[max_size];
             glm::vec3 attributes[max_size];
 
@@ -89,14 +111,20 @@ namespace uvgvolucap {
             private:
                 std::shared_ptr<MergeBufferPointCloud> m_merge_buffer = nullptr;
                 size_t curr_start_buff_index = 0;
-				// _points::iterator curr_pos_iterator = m_merge_buffer->positions->begin();
-                // _attributes::iterator curr_attr_iterator = m_merge_buffer->attributes->begin();
+
+                int subspace_min_bound[3] = {0, 0, 0};
+                int subspace_max_bound[3] = {0, 0, 0};
             
             public:
                 PclFragment();
                 ~PclFragment();
                 bool prep_to_merge_buffer(std::shared_ptr<MergeBufferPointCloud> _merge_buffer);
                 void copy_to_merge_buffer();
+
+                void set_min_bound(int x, int y, int z);
+                void set_max_bound(int x, int y, int z);
+
+                void add_point_subspace(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b);
         };
 
     } // namespace geometry

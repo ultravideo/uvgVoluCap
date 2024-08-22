@@ -1,5 +1,6 @@
 #include "point_cloud.hpp"
 #include <iostream>
+#include <cmath>	
 
 namespace uvgvolucap {
     namespace geometry {
@@ -9,6 +10,8 @@ namespace uvgvolucap {
 			glm::vec3 position{x, y, z};
 			glm::vec3 color{r/255.0f, g/255.0f, b/255.0f};
 
+			std::lock_guard<std::mutex> lock(add_point_mx);
+
 			m_size++;
 			if (positions->size() < m_size){
 				positions->resize(positions->size()*2+1);
@@ -17,7 +20,6 @@ namespace uvgvolucap {
 
 			(*positions)[m_size-1] = (position);
 			(*attributes)[m_size-1] = (color);
-
 		}
 		
 		size_t PointCloud::max_size() const
@@ -71,6 +73,7 @@ namespace uvgvolucap {
 
 		void PointCloud::clear() 
 		{
+			m_size = 0;
 			positions->clear();
 			attributes->clear();
 		}
@@ -100,8 +103,6 @@ namespace uvgvolucap {
         PclFragment::PclFragment() : PointCloud()
         {
             m_size = 0; 
-            positions->resize(m_max_size); 
-            attributes->resize(m_max_size);
         }
 
         PclFragment::~PclFragment() 
@@ -126,19 +127,42 @@ namespace uvgvolucap {
             {
                 m_size = m_merge_buffer->max_size - m_merge_buffer->curr_index;
             }
-            
-            m_merge_buffer->curr_index+= (m_size);
+
+            m_merge_buffer->curr_index+=(m_size);
 
             return true;
         }
 
         void PclFragment::copy_to_merge_buffer()
-        {
-             std::cout << "id: "<< m_merge_buffer->id << " - Write loc: "  << curr_start_buff_index << " to " << curr_start_buff_index + m_size << std::endl;
-                
+        {                
             memcpy(m_merge_buffer->positions + curr_start_buff_index, positions->data(), m_size * sizeof(glm::vec3));
             memcpy(m_merge_buffer->attributes + curr_start_buff_index, attributes->data(), m_size * sizeof(glm::vec3));
+			positions->clear();
+			attributes->clear();
         }
 
+		void PclFragment::set_max_bound(int x, int y, int z) {
+			subspace_max_bound[0] = x;
+			subspace_max_bound[1] = y;
+			subspace_max_bound[2] = z;
+		}
+
+		void PclFragment::set_min_bound(int x, int y, int z) {
+			subspace_min_bound[0] = x;
+			subspace_min_bound[1] = y;
+			subspace_min_bound[2] = z;
+		}
+
+		void  PclFragment::add_point_subspace(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b) {
+			
+			// if (x < subspace_min_bound[0] || x > subspace_max_bound[0] || y < subspace_min_bound[1] || y > subspace_max_bound[1] || z < subspace_min_bound[2] || z > subspace_max_bound[2])
+			// 	return;
+
+			// distance betweem x y z to (-25, -25, 377) < 1.1
+			if (std::sqrt(std::pow(x + 25, 2) + std::pow(z - 377, 2)) > 300)
+				return;
+			
+			add_point(x, y, z, r, g, b);
+		}
     } // namespace geometry
 } // namespace uvgvolucap

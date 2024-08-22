@@ -3,6 +3,7 @@
 #define UVGVOLUCAP_CAMERA_KINECT_UTILITIES_HPP
 
 #include "kinect_camera.hpp"
+#include "debug_macro.hpp"
 
 namespace uvgvolucap {
     namespace camera{
@@ -13,7 +14,15 @@ namespace uvgvolucap {
         uint32_t get_numb_connected_devices();
         std::string get_serial_number(int device_index);
 
+        enum voxelizer_mode {
+            VOXELIZER_MAP,
+            VOXELIZER_SUBSPACE
+        };
+
+        int get_voxelizer_mode(int mode);
+
         //Test
+        void restart_connected_device();
         bool init_connected_device(std::shared_ptr<std::vector<_kinect_device_ptr>> devices, std::string config_path);
         void start_capture(std::shared_ptr<std::vector<_kinect_device_ptr>> devices, std::shared_ptr<ThreadQueue> thread_queue, std::shared_ptr<SyncManager> _sync_manager);
     } // namespace camera
