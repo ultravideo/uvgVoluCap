@@ -92,7 +92,7 @@ namespace uvgvolucap {
 
                         // subspace_fragments->push_back(std::make_shared<geometry::PclFragment>());
                     }
-                }
+            }
         };
         
         class Kinect : public BasedCamera<uint32_t, uint32_t, std::string, nlohmann::json> {
@@ -134,13 +134,11 @@ namespace uvgvolucap {
             void transform_view_point(std::shared_ptr<Frame> frame);
             void process_frame(std::shared_ptr<Frame> frame);
             void process_frame_voxel_subspace(std::shared_ptr<Frame> frame);
-            void process_frame_voxel_unordermap(std::shared_ptr<Frame> frame);
             void pack_fragment(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::MergeBufferPointCloud> _asisgned_merge_buffer);
             void voxelization(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::PclFragment> voxelized_pcl);
 
             size_t classify_subspace(float x, float y, float z);
             void pointcloud_production_line();
-            void pointcloud_production_line_voxelize_with_map();
             void pointcloud_production_line_with_subsapce();
 
         protected:

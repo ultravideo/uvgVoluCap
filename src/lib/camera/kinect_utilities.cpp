@@ -136,8 +136,6 @@ exit(EXIT_FAILURE);                }
             switch (mode)
             {
             case 0:
-                return VOXELIZER_MAP;
-            case 1:
                 return VOXELIZER_SUBSPACE;
             default:
                 Logger::log(LogLevel::ERROR, "INIT", "Invalid input voxelizer mode\n");
@@ -190,9 +188,6 @@ exit(EXIT_FAILURE);                }
                 else{
                     switch (get_voxelizer_mode(config_params["setting"]["voxelized_mode"].get<int>()))
                     {
-                    case VOXELIZER_MAP:
-                        Logger::log(LogLevel::INFO, "INIT", "Voxelizer mode: mapping\n");
-                        break;
                     case VOXELIZER_SUBSPACE:
                         Logger::log(LogLevel::INFO, "INIT", "Voxelizer mode: subspace\n");
                         break;

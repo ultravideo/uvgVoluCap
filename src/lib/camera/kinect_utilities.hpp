@@ -15,7 +15,6 @@ namespace uvgvolucap {
         std::string get_serial_number(int device_index);
 
         enum voxelizer_mode {
-            VOXELIZER_MAP,
             VOXELIZER_SUBSPACE
         };
 
