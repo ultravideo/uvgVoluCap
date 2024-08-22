@@ -1,9 +1,6 @@
 #ifndef DEBUG_MACRO_HPP
 #define DEBUG_MACRO_HPP
 
-#define DEBUG_TOOL
-// #define TIMER
-
 // #define TRANSFORM_VIEWPOINT_TIMER
 
 // #define PROCESSING_TIMER
@@ -12,8 +9,11 @@
 
 // #define SENDER_TIMER
 
-// #define FINAL_NUMBER_DEBUG
+#define FINAL_NUMBER_DEBUG
 
 // #define SETUP_LINE_TIMER
+
+#define FPS_MEASURE
+#define RUNNINT_TIME 30.0
 
 #endif // DEBUG_MACRO_HPP

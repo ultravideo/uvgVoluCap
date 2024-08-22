@@ -183,20 +183,36 @@ exit(EXIT_FAILURE);                }
             if (devices->size() > 0 && devices->size() <= num_devices)
             {
                 Logger::log(LogLevel::INFO, "INIT", "System config: "+ system_config +"\n");
-                switch (get_voxelizer_mode(config_params["setting"]["voxelized_mode"].get<int>()))
-                {
-                case VOXELIZER_MAP:
-                    Logger::log(LogLevel::INFO, "INIT", "Voxelizer mode: mapping\n");
-                    break;
-                case VOXELIZER_SUBSPACE:
-                    Logger::log(LogLevel::INFO, "INIT", "Voxelizer mode: subspace\n");
-                    break;
-                
-                default:
-                    Logger::log(LogLevel::ERROR, "INIT", "Invalid voxelizer mode\n");
-                    exit(EXIT_FAILURE);
-                    break;
-                } 
+
+                if (!config_params["setting"]["voxelized"].get<bool>()) {
+                    Logger::log(LogLevel::INFO, "INIT", "Voxelizer mode: disable\n");
+                }
+                else{
+                    switch (get_voxelizer_mode(config_params["setting"]["voxelized_mode"].get<int>()))
+                    {
+                    case VOXELIZER_MAP:
+                        Logger::log(LogLevel::INFO, "INIT", "Voxelizer mode: mapping\n");
+                        break;
+                    case VOXELIZER_SUBSPACE:
+                        Logger::log(LogLevel::INFO, "INIT", "Voxelizer mode: subspace\n");
+                        break;
+                    
+                    default:
+                        Logger::log(LogLevel::ERROR, "INIT", "Invalid voxelizer mode\n");
+                        exit(EXIT_FAILURE);
+                        break;
+                    } 
+                }
+
+                if (config_params["setting"]["subsample_row"].get<int>() <= 0 || config_params["setting"]["subsample_col"].get<int>() <= 0){ 
+                    Logger::log(LogLevel::ERROR, "INIT", "Subsample value must be greater than 0\n");
+                }
+                else {
+                    Logger::log(LogLevel::INFO, "INIT", "Subsampling setup {row,col} : {" + std::to_string(config_params["setting"]["subsample_row"].get<int>()) 
+                                                                                    + "," + std::to_string(config_params["setting"]["subsample_col"].get<int>())
+                                                                                             + "}\n");
+                    
+                }
 
                 if(config_params["setting"]["depth_to_color"].get<bool>()) {
                     Logger::log(LogLevel::INFO, "INIT", "Depth to color mode is enabled\n");

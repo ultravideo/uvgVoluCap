@@ -7,7 +7,7 @@
 #include <memory>
 #include <mutex>
 #include <unordered_map>
-
+#include <unordered_set>
 namespace uvgvolucap {
     namespace geometry {
 
@@ -98,7 +98,7 @@ namespace uvgvolucap {
 
         struct MergeBufferPointCloud {
             int id = 0;
-            static const size_t max_size = 900000;
+            static const size_t max_size = 1000000;
             glm::vec3 positions[max_size];
             glm::vec3 attributes[max_size];
 
@@ -111,12 +111,20 @@ namespace uvgvolucap {
             private:
                 std::shared_ptr<MergeBufferPointCloud> m_merge_buffer = nullptr;
                 size_t curr_start_buff_index = 0;
+
+                int subspace_min_bound[3] = {0, 0, 0};
+                int subspace_max_bound[3] = {0, 0, 0};
             
             public:
                 PclFragment();
                 ~PclFragment();
                 bool prep_to_merge_buffer(std::shared_ptr<MergeBufferPointCloud> _merge_buffer);
                 void copy_to_merge_buffer();
+
+                void set_min_bound(int x, int y, int z);
+                void set_max_bound(int x, int y, int z);
+
+                void add_point_subspace(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b);
         };
 
     } // namespace geometry

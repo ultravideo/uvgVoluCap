@@ -72,6 +72,10 @@ namespace uvgvolucap {
             std::mutex subspace_mx;
             std::shared_ptr<std::vector<std::shared_ptr<geometry::PclFragment>>> subspace_fragments = std::make_shared<std::vector<std::shared_ptr<geometry::PclFragment>>>();
 
+            int min_bound[3] = {-294, 0, 277};
+            int max_bound[3] = {46, 692, 545};
+            int step = 8;
+
             /**
              * @brief Constructor for Data_package.
              * @param depth_ The depth image.
@@ -79,9 +83,14 @@ namespace uvgvolucap {
              */
             Frame(int _id, k4a_image_t depth_, k4a_image_t color_)
                 : id(_id), depth_image(depth_), color_image(color_) {
-                    for (size_t i = 0; i < 8; i++)
+                    for (int i = 0; i < step; i++)
                     {
-                        subspace_fragments->push_back(std::make_shared<geometry::PclFragment>());
+                        std::shared_ptr<geometry::PclFragment> subspace_slice = std::make_shared<geometry::PclFragment>();
+                        subspace_slice->set_min_bound(min_bound[0], i * (max_bound[1] - min_bound[1]) / step, min_bound[2]);
+                        subspace_slice->set_max_bound(max_bound[0], (i + 1) * (max_bound[1] - min_bound[1]) / step, max_bound[2]);
+                        subspace_fragments->push_back(subspace_slice);
+
+                        // subspace_fragments->push_back(std::make_shared<geometry::PclFragment>());
                     }
                 }
         };
@@ -127,6 +136,7 @@ namespace uvgvolucap {
             void process_frame_voxel_subspace(std::shared_ptr<Frame> frame);
             void process_frame_voxel_unordermap(std::shared_ptr<Frame> frame);
             void pack_fragment(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::MergeBufferPointCloud> _asisgned_merge_buffer);
+            void voxelization(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::PclFragment> voxelized_pcl);
 
             size_t classify_subspace(float x, float y, float z);
             void pointcloud_production_line();

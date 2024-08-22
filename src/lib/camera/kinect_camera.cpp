@@ -412,18 +412,30 @@ namespace uvgvolucap {
                         float z = (device_info.transformation_matrix[8] * x_o + device_info.transformation_matrix[9] * y_o + device_info.transformation_matrix[10] * z_o + device_info.transformation_matrix[11]);
 
                         // Filter by calculated radius
-                        if (x > device_info.filter_config.min_xy && x < device_info.filter_config.max_xy &&
+                        if (x > device_info.filter_config.min_z && x < device_info.filter_config.max_z &&
                             y > device_info.filter_config.min_xy && y < device_info.filter_config.max_xy &&
                             z > device_info.filter_config.min_z && z < device_info.filter_config.max_z)
                         {
                             glm::vec3 grid_point = grid_ptr->real_to_grid(x, y, z);
 
-                            size_t subspace_id = classify_subspace(grid_point.x, grid_point.y, grid_point.z);
-                            frame->subspace_fragments->at(subspace_id)->add_point(x, y, z, r, g, b);
+                            size_t idx = static_cast<size_t>(grid_point.y) / (frame->max_bound[1]/(frame->step));
+
+                            if (idx < frame->subspace_fragments->size())
+                            {
+                                frame->subspace_fragments->at(idx)->add_point_subspace(grid_point.x, grid_point.y, grid_point.z, r, g, b);
+                            }
+                            // size_t subspace_id = classify_subspace(grid_point.x, grid_point.y, grid_point.z);
+                            // frame->subspace_fragments->at(subspace_id)->add_point(grid_point.x, grid_point.y, grid_point.z, r, g, b);
                         }
                     }
                 }
             }
+
+            for (size_t i = 0; i < frame->subspace_fragments->size(); i++)
+            {
+                frame->subspace_fragments->at(i)->finallized();
+            }
+
             k4a_image_release(frame->depth_image);
             k4a_image_release(frame->color_image);
 
@@ -566,6 +578,34 @@ namespace uvgvolucap {
 #endif
         }
 
+        void Kinect::voxelization(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::PclFragment> voxelized_pcl) {
+            std::unordered_map<geometry::VoxelCoord, geometry::VoxelData, geometry::VoxelCoordHash> voxelMap;
+            size_t index = 0;
+
+            for (size_t i = 0; i < fragment_pcl->max_size(); i++) {
+                glm::vec3 point = fragment_pcl->get_position_by_index(i);
+                glm::vec3 color = fragment_pcl->get_attribute_by_index(i);
+
+                auto voxel = voxelMap.find(point);
+                if (voxel == voxelMap.end()) {
+                    geometry::VoxelData data = {index, 1};
+                    voxelMap.insert({point, data});
+                    index++;
+
+                    voxelized_pcl->add_point(point.x, point.y, point.z, static_cast<uint8_t>(color.x*255.0f), static_cast<uint8_t>(color.y*255.0f), static_cast<uint8_t>(color.z*255.0f));
+                }
+                else {
+                    voxel->second.count++;
+                    auto avg_color_by_index = voxelized_pcl->get_attribute_by_index(voxel->second.index);
+                    avg_color_by_index.x = (avg_color_by_index.x * voxel->second.count + color.x) / (voxel->second.count + 1);
+                    avg_color_by_index.y = (avg_color_by_index.y * voxel->second.count + color.y) / (voxel->second.count + 1);
+                    avg_color_by_index.z = (avg_color_by_index.z * voxel->second.count + color.z) / (voxel->second.count + 1);
+                }
+            }          
+            
+            voxelized_pcl->finallized();
+        }
+
         // Setup lineup for pointcloud production line
 
         void Kinect::pointcloud_production_line() {
@@ -661,16 +701,17 @@ namespace uvgvolucap {
 
             warm_up();
             (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
-auto start_time_fps = std::chrono::high_resolution_clock::now();
+            auto start_time_fps = std::chrono::high_resolution_clock::now();
             while (is_started_flag)
             {
-#ifdef SETUP_LINE_TIMER
-                auto start_time = std::chrono::high_resolution_clock::now();
-#endif
                 sync_manager->Cap_permission_cv.wait(lock, [&]()
                 {
                     return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.sync_index)) != 0;
                 });
+
+#ifdef SETUP_LINE_TIMER
+                auto start_time = std::chrono::high_resolution_clock::now();
+#endif
         
                 k4a_capture_t capture;
                 result = k4a_device_get_capture(m_device, &capture, 500);
@@ -693,18 +734,30 @@ auto start_time_fps = std::chrono::high_resolution_clock::now();
                     auto process_frame_job = std::make_shared<uvgvolucap::Job>("ProcessFrame", 1, &Kinect::process_frame_voxel_subspace, this, frame);
                     process_frame_job->addDependency(transf_vp_job);
 
+                    std::vector<std::shared_ptr<uvgvolucap::Job>> voxelization_jobs = std::vector<std::shared_ptr<uvgvolucap::Job>>();
                     std::vector<std::shared_ptr<uvgvolucap::Job>> subspace_jobs = std::vector<std::shared_ptr<uvgvolucap::Job>>();
-                    for (size_t i = 0; i < 8; i++) {
-                        auto pack_fragment_job = std::make_shared<uvgvolucap::Job>("PackFragment", 2, &Kinect::pack_fragment, this, frame->subspace_fragments->at(i), assigned_merge_buffer); 
-                        pack_fragment_job->addDependency(process_frame_job);
+
+                    for (size_t i = 0; i < frame->step; i++) {
+                        std::shared_ptr<geometry::PclFragment> voxelized_pcl = std::make_shared<geometry::PclFragment>();
+                        auto voxelization_job = std::make_shared<uvgvolucap::Job>("Voxelization", 2, &Kinect::voxelization, this, frame->subspace_fragments->at(i), voxelized_pcl);
+                        auto pack_fragment_job = std::make_shared<uvgvolucap::Job>("PackFragment", 3, &Kinect::pack_fragment, this, voxelized_pcl, assigned_merge_buffer); 
+                        
+                        voxelization_job->addDependency(process_frame_job);
+                        pack_fragment_job->addDependency(voxelization_job);
                         sync_manager->send_job->addDependency(pack_fragment_job);   
+
+                        voxelization_jobs.push_back(voxelization_job);
                         subspace_jobs.push_back(pack_fragment_job);
                     }
 
                     thread_queue->submitJob(transf_vp_job);
                     thread_queue->submitJob(process_frame_job);
+
+                    for (size_t i = 0; i < frame->step; i++) {
+                        thread_queue->submitJob(voxelization_jobs[i]);
+                    }
                     
-                    for (size_t i = 0; i < 8; i++) {
+                    for (size_t i = 0; i < frame->step; i++) {
                         thread_queue->submitJob(subspace_jobs[i]);
                     }
                 }
@@ -723,7 +776,6 @@ auto start_time_fps = std::chrono::high_resolution_clock::now();
                 auto end_time = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double> elapsed_time = end_time - start_time;
                 Logger::log(LogLevel::INFO, "Capture - " + device_info.serial_number, "Elapsed time of frame " + std::to_string(frame_count)+ " : " + std::to_string(elapsed_time.count()) + "s\n");
-
 
                 auto end_time_fps = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double> elapsed_time_fps = end_time_fps - start_time_fps;

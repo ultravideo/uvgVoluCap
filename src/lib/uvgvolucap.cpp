@@ -23,6 +23,7 @@ namespace uvgvolucap {
             zmq::socket_t positionSocket(context, ZMQ_PUSH);
             positionSocket.connect("tcp://localhost:5556");
 
+            size_t sent_frame_count = 0;
             //Lamda function for sending data
 
             auto send_data = [&](std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer) {
@@ -32,7 +33,7 @@ namespace uvgvolucap {
 #endif
                 zmq_send(colorSocket, m_merge_buffer->attributes, m_merge_buffer->curr_index * sizeof(glm::vec3), 0);
                 zmq_send(positionSocket, m_merge_buffer->positions, m_merge_buffer->curr_index * sizeof(glm::vec3), 0);
-
+                sent_frame_count++;
 #ifdef FINAL_NUMBER_DEBUG
                 Logger::log(LogLevel::INFO, "Pts_nb", "number: " + std::to_string(m_merge_buffer->curr_index) + "\n");
 #endif
@@ -47,11 +48,13 @@ namespace uvgvolucap {
 
             std::unique_lock<std::mutex> lock(sync_manager_handler->sync_mx);
             std::shared_ptr<uvgvolucap::Job> pre_send_job = nullptr;
-
+#ifdef FPS_MEASURE
+            auto start_time = std::chrono::high_resolution_clock::now();
+#endif
             while (!stop_flag)
             {
                 sync_manager_handler->m_merge_buffer = std::make_shared<geometry::MergeBufferPointCloud>(); 
-                std::shared_ptr<uvgvolucap::Job> curr_send_job = std::make_shared<uvgvolucap::Job>("SendJob", 3, send_data, sync_manager_handler->m_merge_buffer);
+                std::shared_ptr<uvgvolucap::Job> curr_send_job = std::make_shared<uvgvolucap::Job>("SendJob", 4, send_data, sync_manager_handler->m_merge_buffer);
                 sync_manager_handler->send_job  = curr_send_job;
                 main_cv.wait(lock, [&]
                         { return ready_Cam == limit; });
@@ -75,9 +78,22 @@ namespace uvgvolucap {
                 }
                 curr_send_job->addDependency(pre_send_job);
                 pre_send_job = curr_send_job;
+
+#ifdef FPS_MEASURE
+                auto end_time = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> elapsed_time = end_time - start_time;
+                if (elapsed_time.count() > RUNNINT_TIME)
+                {
+                    Logger::log(LogLevel::INFO, "System", "FPS: " + std::to_string(sent_frame_count / elapsed_time.count()) + "\n");
+                    Logger::log(LogLevel::INFO, "System", "Created Frames: " + std::to_string(sync_manager_handler->count_pcl) + "\n");
+                    Logger::log(LogLevel::INFO, "System", "Sent Frames: " + std::to_string(sent_frame_count) + "\n");
+                    
+                    break;
+                }
+#endif
             }
 
-
+            exit(EXIT_SUCCESS); // Exit the program
         }
 
         void PointCloudFactory::set_sync_limit(size_t total_cams) {
