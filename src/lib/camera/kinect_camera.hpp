@@ -83,15 +83,13 @@ namespace uvgvolucap {
              */
             Frame(int _id, k4a_image_t depth_, k4a_image_t color_)
                 : id(_id), depth_image(depth_), color_image(color_) {
-                    for (int i = 0; i < step; i++)
-                    {
-                        std::shared_ptr<geometry::PclFragment> subspace_slice = std::make_shared<geometry::PclFragment>();
-                        subspace_slice->set_min_bound(min_bound[0], i * (max_bound[1] - min_bound[1]) / step, min_bound[2]);
-                        subspace_slice->set_max_bound(max_bound[0], (i + 1) * (max_bound[1] - min_bound[1]) / step, max_bound[2]);
-                        subspace_fragments->push_back(subspace_slice);
-
-                        // subspace_fragments->push_back(std::make_shared<geometry::PclFragment>());
-                    }
+                for (int i = 0; i < step; i++)
+                {
+                    std::shared_ptr<geometry::PclFragment> subspace_slice = std::make_shared<geometry::PclFragment>();
+                    subspace_slice->set_min_bound(min_bound[0], i * (max_bound[1] - min_bound[1]) / step, min_bound[2]);
+                    subspace_slice->set_max_bound(max_bound[0], (i + 1) * (max_bound[1] - min_bound[1]) / step, max_bound[2]);
+                    subspace_fragments->push_back(subspace_slice);
+                }
             }
         };
         

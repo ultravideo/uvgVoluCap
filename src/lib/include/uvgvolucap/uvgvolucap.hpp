@@ -15,7 +15,7 @@ namespace uvgvolucap {
         class PointCloudFactory {
         private:
             std::shared_ptr<uvgvolucap::ThreadQueue> thread_queue = std::make_shared<uvgvolucap::ThreadQueue>(40);
-
+            size_t total_cams = 0;
             int gen_ID = 0;
             int limit = 0;
             int ready_Cam = 0; /**< The number of ready cameras. */
@@ -44,7 +44,7 @@ namespace uvgvolucap {
             std::shared_ptr<camera::SyncManager> get_sync_manager();
         
         private:
-
+            void pack_data(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer);
         };
     }
 

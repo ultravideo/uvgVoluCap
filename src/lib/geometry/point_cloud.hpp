@@ -84,7 +84,7 @@ namespace uvgvolucap {
 			 */
 			PointCloud operator+(const PointCloud &cloud) const;
 
-			void finallized();			
+			virtual void finallized() = 0;		
             void clear();
 			void resize(size_t size);
             void add_point(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b);
@@ -96,15 +96,7 @@ namespace uvgvolucap {
             size_t max_size() const;
 		};
 
-        struct MergeBufferPointCloud {
-            int id = 0;
-            static const size_t max_size = 1000000;
-            glm::vec3 positions[max_size];
-            glm::vec3 attributes[max_size];
-
-            std::mutex buff_mx;
-            size_t curr_index = 0;
-        };
+        struct MergeBufferPointCloud;
 
         class PclFragment : public PointCloud
         {
@@ -114,17 +106,58 @@ namespace uvgvolucap {
 
                 int subspace_min_bound[3] = {0, 0, 0};
                 int subspace_max_bound[3] = {0, 0, 0};
+
+                std::unordered_map<VoxelCoord, VoxelData, VoxelCoordHash> voxelMap;
+                size_t voxle_map_index = 0;
+                std::mutex voxel_mx;
             
             public:
                 PclFragment();
                 ~PclFragment();
                 bool prep_to_merge_buffer(std::shared_ptr<MergeBufferPointCloud> _merge_buffer);
                 void copy_to_merge_buffer();
-
                 void set_min_bound(int x, int y, int z);
                 void set_max_bound(int x, int y, int z);
-
                 void add_point_subspace(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b);
+
+                void voxlelization_add_point(float x, float y, float z, float r, float g, float b);
+                void finallized() override;
+        };
+
+        struct MergeBufferPointCloud {
+            int id = 0;
+            static const size_t max_size = 1000000;
+            glm::vec3 positions[max_size];
+            glm::vec3 attributes[max_size];
+
+            std::mutex buff_mx;
+            size_t curr_index = 0;
+
+            std::shared_ptr<std::vector<std::shared_ptr<PclFragment>>> slice_fragments = std::make_shared<std::vector<std::shared_ptr<PclFragment>>>();
+            std::shared_ptr<std::vector<std::shared_ptr<std::vector<std::shared_ptr<PclFragment>>>>> slice_components =std::make_shared<std::vector<std::shared_ptr<std::vector<std::shared_ptr<PclFragment>>>>>();
+
+            int step = 8;
+
+            //constructor
+            MergeBufferPointCloud(size_t total_cams) {
+                for (int i = 0; i < step; i++)
+                {
+                    std::shared_ptr<PclFragment> subspace_slice = std::make_shared<PclFragment>();
+                    slice_fragments->push_back(subspace_slice);
+                }
+
+                for (int i = 0; i < total_cams; i++)
+                {
+                    std::shared_ptr<std::vector<std::shared_ptr<PclFragment>>> slice_container = std::make_shared<std::vector<std::shared_ptr<PclFragment>>>();
+                    for (int j = 0; j < step; j++)
+                    {
+                        std::shared_ptr<PclFragment> subspace_slice = std::make_shared<PclFragment>();
+                        slice_container->push_back(subspace_slice);
+                    }
+                    slice_components->push_back(slice_container);
+                }
+            }
+            
         };
 
     } // namespace geometry

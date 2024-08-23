@@ -455,31 +455,14 @@ namespace uvgvolucap {
         }
 
         void Kinect::voxelization(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::PclFragment> voxelized_pcl) {
-            std::unordered_map<geometry::VoxelCoord, geometry::VoxelData, geometry::VoxelCoordHash> voxelMap;
-            size_t index = 0;
 
-            for (size_t i = 0; i < fragment_pcl->max_size(); i++) {
+            for (size_t i = 0; i < fragment_pcl->max_size(); i++)
+            {
                 glm::vec3 point = fragment_pcl->get_position_by_index(i);
                 glm::vec3 color = fragment_pcl->get_attribute_by_index(i);
 
-                auto voxel = voxelMap.find(point);
-                if (voxel == voxelMap.end()) {
-                    geometry::VoxelData data = {index, 1};
-                    voxelMap.insert({point, data});
-                    index++;
-
-                    voxelized_pcl->add_point(point.x, point.y, point.z, static_cast<uint8_t>(color.x*255.0f), static_cast<uint8_t>(color.y*255.0f), static_cast<uint8_t>(color.z*255.0f));
-                }
-                else {
-                    voxel->second.count++;
-                    auto avg_color_by_index = voxelized_pcl->get_attribute_by_index(voxel->second.index);
-                    avg_color_by_index.x = (avg_color_by_index.x * voxel->second.count + color.x) / (voxel->second.count + 1);
-                    avg_color_by_index.y = (avg_color_by_index.y * voxel->second.count + color.y) / (voxel->second.count + 1);
-                    avg_color_by_index.z = (avg_color_by_index.z * voxel->second.count + color.z) / (voxel->second.count + 1);
-                }
-            }          
-            
-            voxelized_pcl->finallized();
+                voxelized_pcl->voxlelization_add_point(point.x, point.y, point.z, color.r, color.g, color.b);
+            }
         }
 
         // Setup lineup for pointcloud production line
@@ -609,32 +592,13 @@ namespace uvgvolucap {
                     auto process_frame_job = std::make_shared<uvgvolucap::Job>("ProcessFrame", 1, &Kinect::process_frame_voxel_subspace, this, frame);
                     process_frame_job->addDependency(transf_vp_job);
 
-                    std::vector<std::shared_ptr<uvgvolucap::Job>> voxelization_jobs = std::vector<std::shared_ptr<uvgvolucap::Job>>();
-                    std::vector<std::shared_ptr<uvgvolucap::Job>> subspace_jobs = std::vector<std::shared_ptr<uvgvolucap::Job>>();
-
                     for (size_t i = 0; i < frame->step; i++) {
-                        std::shared_ptr<geometry::PclFragment> voxelized_pcl = std::make_shared<geometry::PclFragment>();
-                        auto voxelization_job = std::make_shared<uvgvolucap::Job>("Voxelization", 2, &Kinect::voxelization, this, frame->subspace_fragments->at(i), voxelized_pcl);
-                        auto pack_fragment_job = std::make_shared<uvgvolucap::Job>("PackFragment", 3, &Kinect::pack_fragment, this, voxelized_pcl, assigned_merge_buffer); 
-                        
-                        voxelization_job->addDependency(process_frame_job);
-                        pack_fragment_job->addDependency(voxelization_job);
-                        sync_manager->send_job->addDependency(pack_fragment_job);   
-
-                        voxelization_jobs.push_back(voxelization_job);
-                        subspace_jobs.push_back(pack_fragment_job);
+                        sync_manager->m_merge_buffer->slice_components->at(device_info.sync_index)->at(i) = frame->subspace_fragments->at(i);
                     }
 
+                    sync_manager->send_job->addDependency(process_frame_job);
                     thread_queue->submitJob(transf_vp_job);
                     thread_queue->submitJob(process_frame_job);
-
-                    for (size_t i = 0; i < frame->step; i++) {
-                        thread_queue->submitJob(voxelization_jobs[i]);
-                    }
-                    
-                    for (size_t i = 0; i < frame->step; i++) {
-                        thread_queue->submitJob(subspace_jobs[i]);
-                    }
                 }
                 else if (result == K4A_WAIT_RESULT_FAILED)
                 {

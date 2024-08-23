@@ -14,6 +14,12 @@ namespace uvgvolucap {
             
         }
 
+        void PointCloudFactory::pack_data(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer) {
+            if (fragment_pcl->prep_to_merge_buffer(m_merge_buffer)) {
+                fragment_pcl->copy_to_merge_buffer();
+            }
+        }
+
         void PointCloudFactory::execute_sync() {
             zmq::context_t context{1};
 
@@ -25,6 +31,24 @@ namespace uvgvolucap {
 
             size_t sent_frame_count = 0;
             //Lamda function for sending data
+
+            auto dummy_funct = [&]() {
+                return;
+            };
+
+            auto voxelize = [&](std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer, int slice_index) {
+                for (size_t i = 0; i < m_merge_buffer->slice_components->size(); i++) {
+                    for (size_t j = 0; j < m_merge_buffer->slice_components->at(i)->at(slice_index)->max_size(); j++) {
+                        glm::vec3 point = m_merge_buffer->slice_components->at(i)->at(slice_index)->get_position_by_index(j);
+                        glm::vec3 color = m_merge_buffer->slice_components->at(i)->at(slice_index)->get_attribute_by_index(j);
+                        m_merge_buffer->slice_fragments->at(slice_index)->voxlelization_add_point(point.x, point.y, point.z, color.x, color.y, color.z);
+                    }
+                    m_merge_buffer->slice_fragments->at(slice_index)->finallized();
+                    m_merge_buffer->slice_components->at(i)->at(slice_index)->clear();
+                    // std::cout << m_merge_buffer->slice_fragments->at(slice_index)->max_size() << std::endl;
+                }
+                pack_data(m_merge_buffer->slice_fragments->at(slice_index), m_merge_buffer);
+            };
 
             auto send_data = [&](std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer) {
                 //Send data
@@ -43,7 +67,10 @@ namespace uvgvolucap {
                 std::chrono::duration<double> elapsed_time = end_time - start_time;
                 Logger::log(LogLevel::INFO, "Sender Zmq", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
 #endif
-
+                m_merge_buffer->curr_index = 0;
+                m_merge_buffer->slice_fragments->clear();
+                m_merge_buffer->slice_components->clear();
+                
             };
 
             std::unique_lock<std::mutex> lock(sync_manager_handler->sync_mx);
@@ -53,9 +80,22 @@ namespace uvgvolucap {
 #endif
             while (!stop_flag)
             {
-                sync_manager_handler->m_merge_buffer = std::make_shared<geometry::MergeBufferPointCloud>(); 
-                std::shared_ptr<uvgvolucap::Job> curr_send_job = std::make_shared<uvgvolucap::Job>("SendJob", 4, send_data, sync_manager_handler->m_merge_buffer);
-                sync_manager_handler->send_job  = curr_send_job;
+                sync_manager_handler->m_merge_buffer = std::make_shared<geometry::MergeBufferPointCloud>(this->total_cams); 
+                std::shared_ptr<uvgvolucap::Job> dummy_job = std::make_shared<uvgvolucap::Job>("DummyJob", 3, dummy_funct);
+                std::shared_ptr<uvgvolucap::Job> curr_send_job = std::make_shared<uvgvolucap::Job>("SendJob", 5, send_data, sync_manager_handler->m_merge_buffer);
+
+                std::vector<std::shared_ptr<uvgvolucap::Job>> voxel_jobs;
+                for (int i = 0; i < sync_manager_handler->m_merge_buffer->slice_fragments->size(); i++) {
+                // for (int i = 0; i < 3; i++) {
+                    std::shared_ptr<uvgvolucap::Job> voxel_job = std::make_shared<uvgvolucap::Job>("VoxelJob", 4, voxelize, sync_manager_handler->m_merge_buffer, i);
+                    voxel_job->addDependency(dummy_job);
+                    curr_send_job->addDependency(voxel_job);
+                    voxel_jobs.push_back(voxel_job);
+                }
+
+                // sync_manager_handler->send_job  = curr_send_job;
+                sync_manager_handler->send_job  = dummy_job;
+
                 main_cv.wait(lock, [&]
                         { return ready_Cam == limit; });
 
@@ -67,7 +107,12 @@ namespace uvgvolucap {
                 main_cv.wait(lock, [&]
                         { return cap_Cam == 0; });
 
-                thread_queue->submitJob(sync_manager_handler->send_job);
+                thread_queue->submitJob(dummy_job);
+                for (auto& job : voxel_jobs) {
+                    thread_queue->submitJob(job);
+                }
+                thread_queue->submitJob(curr_send_job);
+
                 sync_manager_handler->count_pcl++;
                 sync_manager_handler->m_merge_buffer->id = static_cast<int>(sync_manager_handler->count_pcl);
 
@@ -96,6 +141,7 @@ namespace uvgvolucap {
 
         void PointCloudFactory::set_sync_limit(size_t total_cams) {
             limit = static_cast<int>((1 << total_cams) - 1);
+            this->total_cams = total_cams;
         }
 
         void PointCloudFactory::update_device_ready(int camera_index, bool reset) {

@@ -153,16 +153,39 @@ namespace uvgvolucap {
 			subspace_min_bound[2] = z;
 		}
 
-		void  PclFragment::add_point_subspace(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b) {
-			
-			// if (x < subspace_min_bound[0] || x > subspace_max_bound[0] || y < subspace_min_bound[1] || y > subspace_max_bound[1] || z < subspace_min_bound[2] || z > subspace_max_bound[2])
-			// 	return;
+		void PclFragment::voxlelization_add_point(float x, float y, float z, float r, float g, float b) {
+			glm::vec3 point = glm::vec3(x, y, z);
+			glm::vec3 color = glm::vec3(r, g, b);
 
-			// distance betweem x y z to (-25, -25, 377) < 1.1
+			// std::lock_guard<std::mutex> lock(voxel_mx);
+			auto voxel = voxelMap.find(point);
+			if (voxel == voxelMap.end()) {
+				geometry::VoxelData data = {voxle_map_index, 1};
+				voxelMap.insert({point, data});
+				voxle_map_index++;
+
+				add_point(point.x, point.y, point.z, static_cast<uint8_t>(color.x*255), static_cast<uint8_t>(color.y*255), static_cast<uint8_t>(color.z*255));
+			}
+			else {
+				voxel->second.count++;
+				auto avg_color_by_index = get_attribute_by_index(voxel->second.index);
+				avg_color_by_index.x = (avg_color_by_index.x * voxel->second.count + color.x) / (voxel->second.count + 1);
+				avg_color_by_index.y = (avg_color_by_index.y * voxel->second.count + color.y) / (voxel->second.count + 1);
+				avg_color_by_index.z = (avg_color_by_index.z * voxel->second.count + color.z) / (voxel->second.count + 1);
+            }
+		}
+
+		void  PclFragment::add_point_subspace(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b) {
 			if (std::sqrt(std::pow(x + 25, 2) + std::pow(z - 377, 2)) > 300)
 				return;
 			
 			add_point(x, y, z, r, g, b);
+		}
+
+		void PclFragment::finallized() { 
+			voxelMap.clear();
+			positions->resize(m_size);
+			attributes->resize(m_size);
 		}
     } // namespace geometry
 } // namespace uvgvolucap
