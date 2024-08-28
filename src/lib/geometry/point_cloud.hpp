@@ -10,8 +10,6 @@
 #include <unordered_set>
 namespace uvgvolucap {
     namespace geometry {
-
-        /* Test */
         struct VoxelData {
             size_t index;
             int count;
@@ -124,6 +122,9 @@ namespace uvgvolucap {
                 void finallized() override;
         };
 
+        typedef std::shared_ptr<std::vector<std::shared_ptr<PclFragment>>> _slices_fragment_ptr;
+        typedef std::vector<std::shared_ptr<PclFragment>> _slices_fragment_vec;
+
         struct MergeBufferPointCloud {
             int id = 0;
             static const size_t max_size = 1000000;
@@ -133,8 +134,8 @@ namespace uvgvolucap {
             std::mutex buff_mx;
             size_t curr_index = 0;
 
-            std::shared_ptr<std::vector<std::shared_ptr<PclFragment>>> slice_fragments = std::make_shared<std::vector<std::shared_ptr<PclFragment>>>();
-            std::shared_ptr<std::vector<std::shared_ptr<std::vector<std::shared_ptr<PclFragment>>>>> slice_components =std::make_shared<std::vector<std::shared_ptr<std::vector<std::shared_ptr<PclFragment>>>>>();
+            _slices_fragment_ptr slice_fragments = std::make_shared<_slices_fragment_vec>();
+            std::shared_ptr<std::vector<_slices_fragment_ptr>> slice_components =std::make_shared<std::vector<_slices_fragment_ptr>>();
 
             int step = 8;
 
@@ -148,13 +149,13 @@ namespace uvgvolucap {
 
                 for (int i = 0; i < total_cams; i++)
                 {
-                    std::shared_ptr<std::vector<std::shared_ptr<PclFragment>>> slice_container = std::make_shared<std::vector<std::shared_ptr<PclFragment>>>();
+                    _slices_fragment_ptr device_slice_container = std::make_shared<_slices_fragment_vec>();
                     for (int j = 0; j < step; j++)
                     {
                         std::shared_ptr<PclFragment> subspace_slice = std::make_shared<PclFragment>();
-                        slice_container->push_back(subspace_slice);
+                        device_slice_container->push_back(subspace_slice);
                     }
-                    slice_components->push_back(slice_container);
+                    slice_components->push_back(device_slice_container);
                 }
             }
             

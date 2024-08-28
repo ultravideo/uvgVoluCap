@@ -26,12 +26,15 @@ namespace uvgvolucap {
             std::mutex capcam_mx; /**< Mutex to synchronize access to ready_Cam. - internal usage */
             
             bool stop_flag = false;
+            bool is_voxelize_mode = false;
 
         public:
             PointCloudFactory();
             ~PointCloudFactory();
 
+            void execute_sync_with_voxelize();
             void execute_sync();
+            void set_voxelization_mode(bool mode);
             void set_sync_limit(size_t total_cams);
             void update_device_ready(int camera_index, bool reset);
             void update_device_capture(int camera_index, bool reset);

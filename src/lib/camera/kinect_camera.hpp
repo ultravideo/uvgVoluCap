@@ -11,6 +11,10 @@
 
 namespace uvgvolucap {
     namespace camera{
+        /**
+         * @brief Struct for main setting of the camera.
+         * @details This struct contains the main setting of the camera.
+         */
         struct MainSetting {
             mutable int color_resolution = 1536;
             mutable int depth_resolution = 576;
@@ -22,6 +26,10 @@ namespace uvgvolucap {
             mutable int subsample_col = 0;
         };
 
+        /**
+         * @brief Struct for filter configuration.
+         * @details This struct contains the filter configuration.
+         */
         struct FilterConfig {
             mutable float max_xy = 0;
             mutable float min_xy = 0;
@@ -49,6 +57,13 @@ namespace uvgvolucap {
             std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer = nullptr; /**< Point cloud buffer */
             std::shared_ptr<uvgvolucap::Job> send_job = nullptr; /**< Job for sending point cloud */
         };
+
+        struct PointCloudConfig {
+            mutable size_t geometry_precision = 0;
+            mutable int min_bound[3] = {0, 0, 0};
+            mutable int max_bound[3] = {0, 0, 0};
+            mutable int number_of_slices = 1;
+        };
         
         struct KinectCameraInfo {
             mutable std::string serial_number = "";
@@ -57,12 +72,14 @@ namespace uvgvolucap {
 
             MainSetting system_config;
             FilterConfig filter_config;
+            PointCloudConfig pointcloud_config;
             ROIConfig roi;
 
             mutable std::array<float, 16> transformation_matrix;
         };
 
-        struct Frame {
+        class Frame {
+        private:
             int id = 0; /**< Frame ID */
             k4a_image_t depth_image = NULL; /**< Depth image */
             k4a_image_t color_image = NULL; /**< Color image */
@@ -72,25 +89,41 @@ namespace uvgvolucap {
             std::mutex subspace_mx;
             std::shared_ptr<std::vector<std::shared_ptr<geometry::PclFragment>>> subspace_fragments = std::make_shared<std::vector<std::shared_ptr<geometry::PclFragment>>>();
 
-            int min_bound[3] = {-294, 0, 277};
-            int max_bound[3] = {46, 692, 545};
-            int step = 8;
+            int min_bound[3] = {0, 0 ,0};
+            int max_bound[3] = {0, 0, 0};
+            int number_of_slices = 8;
 
+        public:
             /**
              * @brief Constructor for Data_package.
              * @param depth_ The depth image.
              * @param color_ The color image.
              */
-            Frame(int _id, k4a_image_t depth_, k4a_image_t color_)
-                : id(_id), depth_image(depth_), color_image(color_) {
-                for (int i = 0; i < step; i++)
-                {
-                    std::shared_ptr<geometry::PclFragment> subspace_slice = std::make_shared<geometry::PclFragment>();
-                    subspace_slice->set_min_bound(min_bound[0], i * (max_bound[1] - min_bound[1]) / step, min_bound[2]);
-                    subspace_slice->set_max_bound(max_bound[0], (i + 1) * (max_bound[1] - min_bound[1]) / step, max_bound[2]);
-                    subspace_fragments->push_back(subspace_slice);
-                }
-            }
+            Frame(int _id, k4a_image_t depth_, k4a_image_t color_, int min_bound_[3], int max_bound_[3], int number_of_slices_ = 8);
+
+            int get_number_of_slices();
+
+            int get_max_bound(int index);
+
+            int get_min_bound(int index);
+
+            k4a_image_t get_depth_image();
+
+            k4a_image_t get_color_image();
+
+            geometry::_slices_fragment_ptr get_subspace_fragments();
+
+            std::shared_ptr<geometry::PclFragment> get_frame_pointcloud();
+
+            void set_depth_image(k4a_image_t depth_);
+
+            void set_color_image(k4a_image_t color_);
+            
+            void set_min_bound(int x, int y, int z);
+
+            void set_max_bound(int x, int y, int z) ;
+
+            void set_number_of_slices(int num) ;
         };
         
         class Kinect : public BasedCamera<uint32_t, uint32_t, std::string, nlohmann::json> {
@@ -101,7 +134,6 @@ namespace uvgvolucap {
             k4a_transformation_t transformation_handle = nullptr;
             k4a_image_t xy_table = NULL;
             k4a_float2_t *xy_table_data = NULL;
-
             KinectCameraInfo device_info;
 
             // Get depth image size for Color2Depth
@@ -111,10 +143,7 @@ namespace uvgvolucap {
             std::shared_ptr<std::thread> capture_thread_ptr;
             std::function<void()> capture_function;
             std::shared_ptr<camera::SyncManager> sync_manager = nullptr;
-
             std::shared_ptr<geometry::Grid> grid_ptr = nullptr;
-
-            mutable size_t middle_bound = 0;
 
         public:
             Kinect(uint32_t _index, uint32_t sync_index, std::string _serial, nlohmann::json _config);
@@ -128,14 +157,11 @@ namespace uvgvolucap {
         private:
             void setup_device_config();
             void createXYTable(const k4a_calibration_t *calibration);
-
             void transform_view_point(std::shared_ptr<Frame> frame);
             void process_frame(std::shared_ptr<Frame> frame);
             void process_frame_voxel_subspace(std::shared_ptr<Frame> frame);
             void pack_fragment(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::MergeBufferPointCloud> _asisgned_merge_buffer);
             void voxelization(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::PclFragment> voxelized_pcl);
-
-            size_t classify_subspace(float x, float y, float z);
             void pointcloud_production_line();
             void pointcloud_production_line_with_subsapce();
 

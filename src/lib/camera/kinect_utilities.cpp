@@ -21,7 +21,8 @@ namespace uvgvolucap {
                 if (config.find(key) == config.end())
                 {
                     Logger::log(LogLevel::ERROR, "INIT", "Config file is missing key: " + key + "\n");
-exit(EXIT_FAILURE);                }
+                    exit(EXIT_FAILURE);                
+                }
             }
 
             if (config["system"]["version"] != "0.1.0")
@@ -143,7 +144,7 @@ exit(EXIT_FAILURE);                }
             }
         }
 
-        bool init_connected_device(std::shared_ptr<std::vector<_kinect_device_ptr>> devices, std::string config_path) {
+        bool init_connected_device(_kinect_device_ptr_vector devices, std::string config_path, bool &is_voxelized) {
             nlohmann::json config_params = parse_config(config_path);
 
             uint32_t num_devices = get_numb_connected_devices();               
@@ -184,8 +185,10 @@ exit(EXIT_FAILURE);                }
 
                 if (!config_params["setting"]["voxelized"].get<bool>()) {
                     Logger::log(LogLevel::INFO, "INIT", "Voxelizer mode: disable\n");
+                    is_voxelized = false;
                 }
                 else{
+                    is_voxelized = true;
                     switch (get_voxelizer_mode(config_params["setting"]["voxelized_mode"].get<int>()))
                     {
                     case VOXELIZER_SUBSPACE:
@@ -224,7 +227,7 @@ exit(EXIT_FAILURE);                }
             return true;
         }  
 
-        void start_capture(std::shared_ptr<std::vector<_kinect_device_ptr>> devices, std::shared_ptr<ThreadQueue> thread_queue, std::shared_ptr<SyncManager> _sync_manager) {
+        void start_capture(_kinect_device_ptr_vector devices, std::shared_ptr<ThreadQueue> thread_queue, std::shared_ptr<SyncManager> _sync_manager) {
             for (auto &device : *devices) {
                 device->start_capture(thread_queue, _sync_manager);
             }

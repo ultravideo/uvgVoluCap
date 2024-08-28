@@ -4,8 +4,11 @@
 
 #include "kinect_camera.hpp"
 #include "debug_macro.hpp"
+#include "uvgvolucap/uvgvolucap.hpp"
 
 namespace uvgvolucap {
+    typedef std::shared_ptr<std::vector<uvgvolucap::camera::_kinect_device_ptr>> _kinect_device_ptr_vector;
+
     namespace camera{
         nlohmann::json parse_config(std::string config_path);
         k4a_fps_t get_fps(int fps);
@@ -22,8 +25,8 @@ namespace uvgvolucap {
 
         //Test
         void restart_connected_device();
-        bool init_connected_device(std::shared_ptr<std::vector<_kinect_device_ptr>> devices, std::string config_path);
-        void start_capture(std::shared_ptr<std::vector<_kinect_device_ptr>> devices, std::shared_ptr<ThreadQueue> thread_queue, std::shared_ptr<SyncManager> _sync_manager);
+        bool init_connected_device(_kinect_device_ptr_vector devices, std::string config_path, bool &is_voxelized);
+        void start_capture(_kinect_device_ptr_vector devices, std::shared_ptr<ThreadQueue> thread_queue, std::shared_ptr<SyncManager> _sync_manager);
     } // namespace camera
 } // namespace uvgvolucap
 
