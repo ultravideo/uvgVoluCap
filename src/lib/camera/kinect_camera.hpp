@@ -55,7 +55,7 @@ namespace uvgvolucap {
         
             size_t count_pcl = 0; //For control based on user input
             std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer = nullptr; /**< Point cloud buffer */
-            std::shared_ptr<uvgvolucap::Job> send_job = nullptr; /**< Job for sending point cloud */
+            std::shared_ptr<uvgvolucap::Job> _job = nullptr; 
         };
 
         struct PointCloudConfig {
@@ -111,7 +111,7 @@ namespace uvgvolucap {
 
             k4a_image_t get_color_image();
 
-            geometry::_slices_fragment_ptr get_subspace_fragments();
+            geometry::_slice_fragments_ptr get_subspace_fragments();
 
             std::shared_ptr<geometry::PclFragment> get_frame_pointcloud();
 

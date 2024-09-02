@@ -41,7 +41,7 @@ namespace uvgvolucap {
             return color_image;
         }
 
-        geometry::_slices_fragment_ptr Frame::get_subspace_fragments() {
+        geometry::_slice_fragments_ptr Frame::get_subspace_fragments() {
             return subspace_fragments;
         }
 
@@ -527,10 +527,10 @@ namespace uvgvolucap {
 
             for (size_t i = 0; i < fragment_pcl->max_size(); i++)
             {
-                glm::vec3 point = fragment_pcl->get_position_by_index(i);
-                glm::vec3 color = fragment_pcl->get_attribute_by_index(i);
+                auto point = fragment_pcl->get_position_by_index(i);
+                auto color = fragment_pcl->get_attribute_by_index(i);
 
-                voxelized_pcl->voxlelization_add_point(point.x, point.y, point.z, color.r, color.g, color.b);
+                voxelized_pcl->voxlelization_add_point(point.x, point.y, point.z, color.x, color.y, color.z);
             }
         }
 
@@ -591,7 +591,7 @@ namespace uvgvolucap {
 
                     process_frame_job->addDependency(transf_vp_job);
                     pack_fragment_job->addDependency(process_frame_job);
-                    sync_manager->send_job->addDependency(pack_fragment_job);
+                    sync_manager->_job->addDependency(pack_fragment_job);
 
                     thread_queue->submitJob(transf_vp_job);
                     thread_queue->submitJob(process_frame_job);
@@ -670,7 +670,7 @@ namespace uvgvolucap {
                         sync_manager->m_merge_buffer->slice_components->at(device_info.sync_index)->at(i) = frame->get_subspace_fragments()->at(i);
                     }
 
-                    sync_manager->send_job->addDependency(process_frame_job);
+                    sync_manager->_job->addDependency(process_frame_job);
                     thread_queue->submitJob(transf_vp_job);
                     thread_queue->submitJob(process_frame_job);
                 }

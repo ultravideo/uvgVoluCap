@@ -8,7 +8,12 @@ namespace uvgvolucap {
         void PointCloud::add_point(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b)
 		{
 			glm::vec3 position{x, y, z};
+
+#ifdef COLOR_UCHAR
+			vec3u8 color{r, g, b};
+#else
 			glm::vec3 color{r/255.0f, g/255.0f, b/255.0f};
+#endif
 
 			std::lock_guard<std::mutex> lock(add_point_mx);
 
@@ -45,7 +50,11 @@ namespace uvgvolucap {
 				}
 
 				memcpy(positions->data()+old_vert_num, cloud.getPositionsVec()->data(), add_vert_num * sizeof(glm::vec3));
+#ifdef COLOR_UCHAR
+				memcpy(attributes->data()+old_vert_num, cloud.getAttributesVec()->data(), add_vert_num * sizeof(vec3u8));
+#else
 				memcpy(attributes->data()+old_vert_num, cloud.getAttributesVec()->data(), add_vert_num * sizeof(glm::vec3));
+#endif
 			}
 
 			return *this;
@@ -56,7 +65,11 @@ namespace uvgvolucap {
 			return (*positions)[index];
 		}
 
+#ifdef COLOR_UCHAR
+		const vec3u8& PointCloud::get_attribute_by_index(size_t index) const
+#else
 		const glm::vec3& PointCloud::get_attribute_by_index(size_t index) const 
+#endif
 		{
 			return (*attributes)[index];
 		}
@@ -66,7 +79,11 @@ namespace uvgvolucap {
 			return positions;
 		}
 
-		const _attributes_vec3_ptr PointCloud::getAttributesVec() const 
+#ifdef COLOR_UCHAR
+		const _attributes_vec3u8_ptr PointCloud::getAttributesVec() const
+#else
+		const _attributes_vec3f_ptr PointCloud::getAttributesVec() const 
+#endif
 		{
 			return attributes;
 		}
@@ -136,7 +153,11 @@ namespace uvgvolucap {
         void PclFragment::copy_to_merge_buffer()
         {                
             memcpy(m_merge_buffer->positions + curr_start_buff_index, positions->data(), m_size * sizeof(glm::vec3));
+#ifdef COLOR_UCHAR
+			memcpy(m_merge_buffer->attributes + curr_start_buff_index, attributes->data(), m_size * sizeof(vec3u8));
+#else
             memcpy(m_merge_buffer->attributes + curr_start_buff_index, attributes->data(), m_size * sizeof(glm::vec3));
+#endif
 			positions->clear();
 			attributes->clear();
         }
@@ -153,10 +174,15 @@ namespace uvgvolucap {
 			subspace_min_bound[2] = z;
 		}
 
+#ifdef COLOR_UCHAR
+		void PclFragment::voxlelization_add_point(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b) {
+			vec3u8 color = vec3u8(r, g, b);
+#else
 		void PclFragment::voxlelization_add_point(float x, float y, float z, float r, float g, float b) {
-			glm::vec3 point = glm::vec3(x, y, z);
 			glm::vec3 color = glm::vec3(r, g, b);
-
+#endif
+			
+			glm::vec3 point = glm::vec3(x, y, z);
 			// std::lock_guard<std::mutex> lock(voxel_mx);
 			auto voxel = voxelMap.find(point);
 			if (voxel == voxelMap.end()) {
@@ -164,7 +190,11 @@ namespace uvgvolucap {
 				voxelMap.insert({point, data});
 				voxle_map_index++;
 
+#ifdef COLOR_UCHAR
+				add_point(point.x, point.y, point.z, r, g, b);
+#else
 				add_point(point.x, point.y, point.z, static_cast<uint8_t>(color.x*255), static_cast<uint8_t>(color.y*255), static_cast<uint8_t>(color.z*255));
+#endif
 			}
 			else {
 				voxel->second.count++;

@@ -27,6 +27,7 @@ namespace uvgvolucap {
             
             bool stop_flag = false;
             bool is_voxelize_mode = false;
+            std::string disconnet_msg = "DISCONNECT";
 
         public:
             PointCloudFactory();
