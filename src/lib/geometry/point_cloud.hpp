@@ -9,7 +9,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#define COLOR_UCHAR
+// #define POINT_UINT16
+// #define COLOR_UCHAR
 
 namespace uvgvolucap {
     namespace geometry {
@@ -57,8 +58,25 @@ namespace uvgvolucap {
             vec3u8(uint8_t _x, uint8_t _y, uint8_t _z) : x(_x), y(_y), z(_z) {}
         } vec3u8;
 
+        typedef struct vect3u16 {
+            uint16_t x;
+            uint16_t y;
+            uint16_t z;
+        
+            //default constructor
+            vect3u16() : x(0), y(0), z(0) {}
+        
+            //constructor
+            vect3u16(uint16_t _x, uint16_t _y, uint16_t _z) : x(_x), y(_y), z(_z) {}
+        } vect3u16;
+
+#ifdef POINT_UINT16
+        typedef std::vector<vect3u16> _points_vec3u16;
+        typedef std::shared_ptr<_points_vec3u16> _points_vec3u16_ptr;
+#else
         typedef std::vector<glm::vec3> _points_vec3; 
         typedef std::shared_ptr<_points_vec3> _points_vec3_ptr;
+#endif
 
 #ifdef COLOR_UCHAR
         typedef std::vector<vec3u8> _attributes_vec3u8; 
@@ -80,12 +98,18 @@ namespace uvgvolucap {
 			size_t m_size = 0;
 			size_t m_max_size = 200000;
 
+#ifdef POINT_UINT16
+            _points_vec3u16_ptr positions = std::make_shared<_points_vec3u16>();
+#else
             _points_vec3_ptr positions  = std::make_shared<_points_vec3>();
+#endif
+
 #ifdef COLOR_UCHAR
             _attributes_vec3u8_ptr attributes = std::make_shared<_attributes_vec3u8>();
 #else
 			_attributes_vec3f_ptr attributes = std::make_shared<_attributes_vec3f>();
 #endif
+
             std::mutex add_point_mx;
 
 		public:
@@ -111,8 +135,14 @@ namespace uvgvolucap {
 			void resize(size_t size);
             void add_point(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b);
 			bool reach_limitsize();
+
+#ifdef POINT_UINT16
+            const vect3u16& get_position_by_index(size_t index) const;
+            const _points_vec3u16_ptr getPositionsVec() const;
+#else
 			const glm::vec3& get_position_by_index(size_t index) const;
 			const _points_vec3_ptr getPositionsVec() const;
+#endif
 
 #ifdef COLOR_UCHAR
             const vec3u8& get_attribute_by_index(size_t index) const;
@@ -161,7 +191,12 @@ namespace uvgvolucap {
         struct MergeBufferPointCloud {
             int id = 0;
             static const size_t max_size = 1000000;
+
+#ifdef POINT_UINT16
+            vect3u16 positions[max_size];
+#else
             glm::vec3 positions[max_size];
+#endif
 
 #ifdef COLOR_UCHAR
             struct vec3u8 attributes[max_size];

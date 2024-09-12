@@ -23,11 +23,16 @@ namespace uvgvolucap {
         void PointCloudFactory::execute_sync_with_voxelize() {
             zmq::context_t context{1};
 
+            const char* color_address = "tcp://localhost:5555";
+            const char* position_address = "tcp://localhost:5556";
+            // const char* color_address = "tcp://10.21.25.8:5555";
+            // const char* position_address = "tcp://10.21.25.8:5556";
+
             zmq::socket_t colorSocket(context, ZMQ_PUSH);
-            colorSocket.connect("tcp://localhost:5555");
+            colorSocket.connect(color_address);
 
             zmq::socket_t positionSocket(context, ZMQ_PUSH);
-            positionSocket.connect("tcp://localhost:5556");
+            positionSocket.connect(position_address);
 
             size_t sent_frame_count = 0;
 
@@ -38,7 +43,7 @@ namespace uvgvolucap {
                 
                 for (size_t i = 0; i < m_merge_buffer->slice_components->size(); i++) {
                     for (size_t j = 0; j < m_merge_buffer->slice_components->at(i)->at(slice_index)->max_size(); j++) {
-                        glm::vec3 point = m_merge_buffer->slice_components->at(i)->at(slice_index)->get_position_by_index(j);
+                        auto point = m_merge_buffer->slice_components->at(i)->at(slice_index)->get_position_by_index(j);
                         auto color = m_merge_buffer->slice_components->at(i)->at(slice_index)->get_attribute_by_index(j);
                         subspace_slice->voxlelization_add_point(point.x, point.y, point.z, color.x, color.y, color.z);
                     }
@@ -55,8 +60,13 @@ namespace uvgvolucap {
 #ifdef SENDER_TIMER
                 auto start_time = std::chrono::high_resolution_clock::now();
 #endif
+
+#ifdef POINT_UINT16
+                zmq_send(positionSocket, m_merge_buffer->positions, m_merge_buffer->curr_index * sizeof(geometry::vect3u16), 0);
+#else
                 zmq_send(positionSocket, m_merge_buffer->positions, m_merge_buffer->curr_index * sizeof(glm::vec3), 0);
-                
+#endif
+
 #ifdef COLOR_UCHAR
                 zmq_send(colorSocket, m_merge_buffer->attributes, m_merge_buffer->curr_index * sizeof(geometry::vec3u8), 0);
 #else
@@ -67,7 +77,7 @@ namespace uvgvolucap {
                 disconnet_cv.notify_one();
 
 #ifdef FINAL_NUMBER_DEBUG
-                Logger::log(LogLevel::INFO, "Pts_nb", "number: " + std::to_string(m_merge_buffer->curr_index) + "\n");
+                Logger::log(LogLevel::INFO, "Pts_nb", "Sent: frame No." + std::to_string(sent_frame_count-1) + " - number: " + std::to_string(m_merge_buffer->curr_index) + "\n");
 #endif
 
 #ifdef SENDER_TIMER
@@ -148,13 +158,20 @@ namespace uvgvolucap {
                     { return sync_manager_handler->count_pcl == sent_frame_count; });
             
             Logger::log(LogLevel::INFO, "System", "FPS: " + std::to_string((sent_frame_count-1) / elapsed_time.count()) + "\n");
-            Logger::log(LogLevel::INFO, "System", "Created Frames: " + std::to_string(sync_manager_handler->count_pcl-1) + "\n");
-            Logger::log(LogLevel::INFO, "System", "Sent Frames: " + std::to_string(sent_frame_count-1) + "\n");
+            Logger::log(LogLevel::INFO, "System", "Created Total Frames: " + std::to_string(sync_manager_handler->count_pcl) + "\n");
+            Logger::log(LogLevel::INFO, "System", "Sent Total Frames: " + std::to_string(sent_frame_count) + "\n");
 
-            zmq::message_t message(disconnet_msg.size());
-            zmq_send(colorSocket, disconnet_msg.c_str(), disconnet_msg.size(), 0);
-            zmq_send(positionSocket, disconnet_msg.c_str(), disconnet_msg.size(), 0);
-            Logger::log(LogLevel::INFO, "System", "Disconnecting signal sent\n");
+            // // std::string disconnet_msg = "DIS CON NECT";
+            // zmq::message_t message(disconnet_msg.size());
+            // zmq_send(colorSocket, disconnet_msg.c_str(), disconnet_msg.size(), ZMQ_DONTWAIT);
+            // zmq_send(positionSocket, disconnet_msg.c_str(), disconnet_msg.size(), ZMQ_DONTWAIT);
+
+            colorSocket.disconnect(color_address);      
+            positionSocket.disconnect(position_address);
+            colorSocket.close();
+            positionSocket.close();
+            context.close();
+            Logger::log(LogLevel::INFO, "System", "Disconnected to hosts\n");
         }
 
         void PointCloudFactory::execute_sync() {
@@ -251,6 +268,10 @@ namespace uvgvolucap {
             zmq_send(colorSocket, disconnet_msg.c_str(), disconnet_msg.size(), 0);
             zmq_send(positionSocket, disconnet_msg.c_str(), disconnet_msg.size(), 0);
             Logger::log(LogLevel::INFO, "System", "Disconnecting signal sent\n");
+
+           // set "dadsa" to msg
+        
+            
         }
 
         void PointCloudFactory::set_sync_limit(size_t total_cams) {

@@ -7,7 +7,11 @@ namespace uvgvolucap {
 
         void PointCloud::add_point(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b)
 		{
+#ifdef POINT_UINT16
+			vect3u16 position{static_cast<uint16_t>(x), static_cast<uint16_t>(y), static_cast<uint16_t>(z)};
+#else
 			glm::vec3 position{x, y, z};
+#endif
 
 #ifdef COLOR_UCHAR
 			vec3u8 color{r, g, b};
@@ -49,7 +53,12 @@ namespace uvgvolucap {
 					attributes->resize(std::max(attributes->size()*2, new_vert_num));
 				}
 
+#ifdef POINT_UINT16
+				memcpy(positions->data()+old_vert_num, cloud.getPositionsVec()->data(), add_vert_num * sizeof(vect3u16));	
+#else
 				memcpy(positions->data()+old_vert_num, cloud.getPositionsVec()->data(), add_vert_num * sizeof(glm::vec3));
+#endif
+
 #ifdef COLOR_UCHAR
 				memcpy(attributes->data()+old_vert_num, cloud.getAttributesVec()->data(), add_vert_num * sizeof(vec3u8));
 #else
@@ -59,8 +68,12 @@ namespace uvgvolucap {
 
 			return *this;
 		};
-		
+
+#ifdef POINT_UINT16
+		const vect3u16& PointCloud::get_position_by_index(size_t index) const 
+#else
 		const glm::vec3& PointCloud::get_position_by_index(size_t index) const 
+#endif
 		{
 			return (*positions)[index];
 		}
@@ -74,7 +87,11 @@ namespace uvgvolucap {
 			return (*attributes)[index];
 		}
 
+#ifdef POINT_UINT16
+		const _points_vec3u16_ptr PointCloud::getPositionsVec() const
+#else
 		const _points_vec3_ptr PointCloud::getPositionsVec() const 
+#endif
 		{
 			return positions;
 		}
@@ -151,8 +168,13 @@ namespace uvgvolucap {
         }
 
         void PclFragment::copy_to_merge_buffer()
-        {                
+        {   
+#ifdef POINT_UINT16
+			memcpy(m_merge_buffer->positions + curr_start_buff_index, positions->data(), m_size * sizeof(vect3u16));
+#else
             memcpy(m_merge_buffer->positions + curr_start_buff_index, positions->data(), m_size * sizeof(glm::vec3));
+#endif
+
 #ifdef COLOR_UCHAR
 			memcpy(m_merge_buffer->attributes + curr_start_buff_index, attributes->data(), m_size * sizeof(vec3u8));
 #else
@@ -183,6 +205,7 @@ namespace uvgvolucap {
 #endif
 			
 			glm::vec3 point = glm::vec3(x, y, z);
+
 			// std::lock_guard<std::mutex> lock(voxel_mx);
 			auto voxel = voxelMap.find(point);
 			if (voxel == voxelMap.end()) {
