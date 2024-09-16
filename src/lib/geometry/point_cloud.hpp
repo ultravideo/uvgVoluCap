@@ -9,11 +9,11 @@
 #include <unordered_map>
 #include <unordered_set>
 
-// #define POINT_UINT16
-// #define COLOR_UCHAR
+#define POINT_UINT16
+#define COLOR_UCHAR
 
 namespace uvgvolucap {
-    namespace geometry {
+    namespace geometry {     
         struct VoxelData {
             size_t index;
             int count;

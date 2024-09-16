@@ -529,8 +529,11 @@ namespace uvgvolucap {
             {
                 auto point = fragment_pcl->get_position_by_index(i);
                 auto color = fragment_pcl->get_attribute_by_index(i);
-
+#ifdef POINT_UINT16
+                voxelized_pcl->voxlelization_add_point(static_cast<float>(point.x), static_cast<float>(point.y), static_cast<float>(point.z), color.x, color.y, color.z);
+#else
                 voxelized_pcl->voxlelization_add_point(point.x, point.y, point.z, color.x, color.y, color.z);
+#endif
             }
         }
 
