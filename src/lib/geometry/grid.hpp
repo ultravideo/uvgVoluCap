@@ -8,10 +8,13 @@ namespace uvgvolucap {
 
         class Grid {
         private:
-            int max_grid_coord = 0; // Maximum grid coordinate
-            float adjusted_grid_dim = 0.0f; // Adjusted grid dimension
-            float real_world_range_xy = 0.0;  // from -2.0 to 2.0 for x and y
-            float real_world_range_z = 0.0;   // from -0.7 to 2.0 for z
+            int max_honz_grid_coord = 0; 
+            int max_vert_grid_coord = 0; 
+            float adjusted_grid_dim = 0.0f; 
+            float real_world_range_vert = 0.0;  
+            float real_world_range_honz = 0.0; 
+            
+            glm::vec3 origin; 
 
             //Nodes
             float node_size; 
@@ -29,6 +32,7 @@ namespace uvgvolucap {
             void set_real_world_params(float max_xy, float min_xy, float max_z, float min_z);
 
             glm::vec3 real_to_grid(float real_x, float real_y, float real_z);
+            glm::vec3 get_grid_origin() { return origin; }
         };
 
     } // namespace geometry

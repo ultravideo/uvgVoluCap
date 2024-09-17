@@ -85,7 +85,6 @@ namespace uvgvolucap {
             k4a_image_t color_image = NULL; /**< Color image */
             
             std::shared_ptr<geometry::PclFragment> fragment_pcl = std::make_shared<geometry::PclFragment>(); /**< Point cloud */
-            
             std::mutex subspace_mx;
             std::shared_ptr<std::vector<std::shared_ptr<geometry::PclFragment>>> subspace_fragments = std::make_shared<std::vector<std::shared_ptr<geometry::PclFragment>>>();
 
@@ -101,28 +100,82 @@ namespace uvgvolucap {
              */
             Frame(int _id, k4a_image_t depth_, k4a_image_t color_, int min_bound_[3], int max_bound_[3], int number_of_slices_ = 8);
 
+            /**
+             * @brief Get the number of slices.
+             * @return int The number of slices.
+             */
             int get_number_of_slices();
 
+            /**
+             * @brief Get the max bound.
+             * @param index The index of the bound.
+             * @return int The max bound.
+             */
             int get_max_bound(int index);
 
+            /**
+             * @brief Get the min bound.
+             * @param index The index of the bound.
+             * @return int The min bound.
+             */
             int get_min_bound(int index);
-
+            
+            /**
+             * @brief Get the depth image.
+             * @return k4a_image_t The depth image.
+             */
             k4a_image_t get_depth_image();
-
+            
+            /**
+             * @brief Get the color image.
+             * @return k4a_image_t The color image.
+             */
             k4a_image_t get_color_image();
-
+            
+            /**
+             * @brief Get the subspace fragments.
+             * @return geometry::_slice_fragments_ptr The subspace fragments.
+             */
             geometry::_slice_fragments_ptr get_subspace_fragments();
 
+            /**
+             * @brief Get the frame point cloud.
+             * @return std::shared_ptr<geometry::PclFragment> The frame point cloud.
+             */
             std::shared_ptr<geometry::PclFragment> get_frame_pointcloud();
-
+            
+            /**
+             * @brief Set the depth image.
+             * @param depth_ The depth image.
+             */
             void set_depth_image(k4a_image_t depth_);
-
+            
+            /**
+             * @brief Set the color image.
+             * @param color_ The color image.
+             */
             void set_color_image(k4a_image_t color_);
             
+            /**
+             * @brief Set the min bound.
+             * @param x The x value.
+             * @param y The y value.
+             * @param z The z value.
+             */
             void set_min_bound(int x, int y, int z);
-
+            
+            /**
+             * @brief Set the max bound.
+             * @param x The x value.
+             * @param y The y value.
+             * @param z The z value.
+             */
             void set_max_bound(int x, int y, int z) ;
-
+            
+            /**
+             * @brief Set the number of slices.
+             * @param num The number of slices.
+             */
             void set_number_of_slices(int num) ;
         };
         

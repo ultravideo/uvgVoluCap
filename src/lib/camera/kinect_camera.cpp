@@ -74,6 +74,8 @@ namespace uvgvolucap {
             number_of_slices = num;
         }
 
+        /* ############################################################################################## */    
+
         Kinect::Kinect(uint32_t _index, uint32_t _sync_index, std::string _serial, nlohmann::json _config) : BasedCamera()
         {
             init(_index, _sync_index, _serial, _config);
@@ -358,7 +360,6 @@ namespace uvgvolucap {
                     exit(EXIT_FAILURE);
                 }
 
-
                 k4a_image_release(frame->get_depth_image());
                 frame->set_depth_image(transformed_image);
             }
@@ -486,7 +487,7 @@ namespace uvgvolucap {
 
                             if (idx < frame->get_subspace_fragments()->size())
                             {
-                                frame->get_subspace_fragments()->at(idx)->add_point_subspace(grid_point.x, grid_point.y, grid_point.z, r, g, b);
+                                frame->get_subspace_fragments()->at(idx)->add_point_subspace(grid_point.x, grid_point.y, grid_point.z, r, g, b, grid_ptr->get_grid_origin());   
                             }
                         }
                     }

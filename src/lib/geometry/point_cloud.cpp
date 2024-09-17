@@ -230,16 +230,10 @@ namespace uvgvolucap {
             }
 		}
 
-		void  PclFragment::add_point_subspace(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b) {
-			if (std::sqrt(std::pow(x + 25, 2) + std::pow(z - 377, 2)) > 300)
+		void PclFragment::add_point_subspace(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b, glm::vec3 origin) {
+			if (std::sqrt(std::pow(x - origin.x, 2) + std::pow(z - origin.z, 2)) > 300)
 				return;
 
-#ifdef POINT_UINT16
-			// Here - qualified point have max distance 300 from the center of the subspace
-			// So we need to shift all point a distance of 300 to keep all points as positive, because uint16_t is unsigned
-			x += 100;
-			z += 100;
-#endif
 			add_point(x, y, z, r, g, b);
 		}
 

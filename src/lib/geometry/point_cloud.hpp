@@ -13,7 +13,7 @@
 #define COLOR_UCHAR
 
 namespace uvgvolucap {
-    namespace geometry {     
+    namespace geometry {  
         struct VoxelData {
             size_t index;
             int count;
@@ -176,7 +176,7 @@ namespace uvgvolucap {
                 void copy_to_merge_buffer();
                 void set_min_bound(int x, int y, int z);
                 void set_max_bound(int x, int y, int z);
-                void add_point_subspace(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b);
+                void add_point_subspace(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b, glm::vec3 origin);
 #ifdef COLOR_UCHAR
                 void voxlelization_add_point(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b);
 #else

@@ -76,20 +76,6 @@ namespace uvgvolucap {
                 sent_frame_count++;
                 disconnet_cv.notify_one();
 
-                // // print 1st 5 points
-                // for (int i = 0; i < 5; i++) {
-                //     auto point = m_merge_buffer->positions[i];
-                //     auto color = m_merge_buffer->attributes[i];
-                //     Logger::log(LogLevel::INFO, "Pts_nb", "Sent: frame No." + std::to_string(sent_frame_count-1) + " - point: (" + std::to_string(point.x) + ", " + std::to_string(point.y) + ", " + std::to_string(point.z) + ") - color: (" + std::to_string(color.x) + ", " + std::to_string(color.y) + ", " + std::to_string(color.z) + ")\n");
-                // }
-
-                // // print last 5 points
-                // for (size_t i = m_merge_buffer->curr_index - 5; i < m_merge_buffer->curr_index; i++) {
-                //     auto point = m_merge_buffer->positions[i];
-                //     auto color = m_merge_buffer->attributes[i];
-                //     Logger::log(LogLevel::INFO, "Pts_nb", "Sent: frame No." + std::to_string(sent_frame_count-1) + " - point: (" + std::to_string(point.x) + ", " + std::to_string(point.y) + ", " + std::to_string(point.z) + ") - color: (" + std::to_string(color.x) + ", " + std::to_string(color.y) + ", " + std::to_string(color.z) + ")\n");
-                // }
-
 #ifdef FINAL_NUMBER_DEBUG
                 Logger::log(LogLevel::INFO, "Pts_nb", "Sent: frame No." + std::to_string(sent_frame_count-1) + " - number: " + std::to_string(m_merge_buffer->curr_index) + "\n");
 #endif
@@ -174,11 +160,6 @@ namespace uvgvolucap {
             Logger::log(LogLevel::INFO, "System", "FPS: " + std::to_string((sent_frame_count-1) / elapsed_time.count()) + "\n");
             Logger::log(LogLevel::INFO, "System", "Created Total Frames: " + std::to_string(sync_manager_handler->count_pcl) + "\n");
             Logger::log(LogLevel::INFO, "System", "Sent Total Frames: " + std::to_string(sent_frame_count) + "\n");
-
-            // // std::string disconnet_msg = "DIS CON NECT";
-            // zmq::message_t message(disconnet_msg.size());
-            // zmq_send(colorSocket, disconnet_msg.c_str(), disconnet_msg.size(), ZMQ_DONTWAIT);
-            // zmq_send(positionSocket, disconnet_msg.c_str(), disconnet_msg.size(), ZMQ_DONTWAIT);
 
             colorSocket.disconnect(color_address);      
             positionSocket.disconnect(position_address);
@@ -282,10 +263,6 @@ namespace uvgvolucap {
             zmq_send(colorSocket, disconnet_msg.c_str(), disconnet_msg.size(), 0);
             zmq_send(positionSocket, disconnet_msg.c_str(), disconnet_msg.size(), 0);
             Logger::log(LogLevel::INFO, "System", "Disconnecting signal sent\n");
-
-           // set "dadsa" to msg
-        
-            
         }
 
         void PointCloudFactory::set_sync_limit(size_t total_cams) {
