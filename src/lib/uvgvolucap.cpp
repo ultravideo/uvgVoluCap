@@ -20,13 +20,18 @@ namespace uvgvolucap {
             }
         }
 
+        void PointCloudFactory::set_zmq_address(std::string i_color_address, std::string i_position_address) {
+            this->color_address = i_color_address;
+            this->position_address = i_position_address;
+
+            if (color_address.empty() || position_address.empty()) {
+                Logger::log(LogLevel::ERROR, "ZMQ", "Please set color and address address\n");
+                exit(EXIT_FAILURE);
+            }
+        }
+
         void PointCloudFactory::execute_sync_with_voxelize() {
             zmq::context_t context{1};
-
-            // const char* color_address = "tcp://localhost:5555";
-            // const char* position_address = "tcp://localhost:5556";
-            const char* color_address = "tcp://10.21.25.5:5555";
-            const char* position_address = "tcp://10.21.25.5:5556";
 
             zmq::socket_t colorSocket(context, ZMQ_PUSH);
             colorSocket.connect(color_address);
@@ -173,10 +178,10 @@ namespace uvgvolucap {
             zmq::context_t context{1};
 
             zmq::socket_t colorSocket(context, ZMQ_PUSH);
-            colorSocket.connect("tcp://localhost:5555");
+            colorSocket.connect(color_address);
 
             zmq::socket_t positionSocket(context, ZMQ_PUSH);
-            positionSocket.connect("tcp://localhost:5556");
+            positionSocket.connect(position_address);
 
             size_t sent_frame_count = 0;
             std::condition_variable disconnet_cv;
@@ -256,13 +261,15 @@ namespace uvgvolucap {
                     { return sync_manager_handler->count_pcl == sent_frame_count; });
             
             Logger::log(LogLevel::INFO, "System", "FPS: " + std::to_string((sent_frame_count-1) / elapsed_time.count()) + "\n");
-            Logger::log(LogLevel::INFO, "System", "Created Frames: " + std::to_string(sync_manager_handler->count_pcl-1) + "\n");
-            Logger::log(LogLevel::INFO, "System", "Sent Frames: " + std::to_string(sent_frame_count-1) + "\n");
+            Logger::log(LogLevel::INFO, "System", "Created Total Frames: " + std::to_string(sync_manager_handler->count_pcl) + "\n");
+            Logger::log(LogLevel::INFO, "System", "Sent Total Frames: " + std::to_string(sent_frame_count) + "\n");
 
-            zmq::message_t message(disconnet_msg.size());
-            zmq_send(colorSocket, disconnet_msg.c_str(), disconnet_msg.size(), 0);
-            zmq_send(positionSocket, disconnet_msg.c_str(), disconnet_msg.size(), 0);
-            Logger::log(LogLevel::INFO, "System", "Disconnecting signal sent\n");
+            colorSocket.disconnect(color_address);      
+            positionSocket.disconnect(position_address);
+            colorSocket.close();
+            positionSocket.close();
+            context.close();
+            Logger::log(LogLevel::INFO, "System", "Disconnected to hosts\n");
         }
 
         void PointCloudFactory::set_sync_limit(size_t total_cams) {
@@ -329,17 +336,23 @@ namespace uvgvolucap {
     }
 
     namespace API {
-        void test() {
+        void run(std::string config_path, std::string color_address, std::string position_address) {
+
+            std::cout << "config_path: " << config_path << std::endl;
+            std::cout << "color_address: " << color_address << std::endl;
+            std::cout << "position_address: " << position_address << std::endl;
+
             _kinect_device_ptr_vector devices = std::make_shared<std::vector<camera::_kinect_device_ptr>>();
 
             bool is_voxelized = false;
-            bool init_success = camera::init_connected_device(devices, "C:/Users/Guillaume/workspace/Testing/ROI/cameraconfig.json", is_voxelized);  
+            bool init_success = camera::init_connected_device(devices, config_path, is_voxelized);  
             if (!init_success) { 
                 Logger::log(LogLevel::ERROR, "INIT", "Initialization failed\n");
                 return; 
             }
 
             core::PointCloudFactory factory;
+            factory.set_zmq_address(color_address, position_address);
             factory.set_sync_limit(devices->size()); 
             factory.set_voxelization_mode(is_voxelized);
             factory.start_producing(camera::start_capture, devices);

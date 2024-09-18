@@ -28,6 +28,8 @@ namespace uvgvolucap {
             bool stop_flag = false;
             bool is_voxelize_mode = false;
             std::string disconnet_msg = "DISCONNECT";
+            std::string color_address = "";
+            std::string position_address = "";
 
         public:
             PointCloudFactory();
@@ -39,6 +41,7 @@ namespace uvgvolucap {
             void set_sync_limit(size_t total_cams);
             void update_device_ready(int camera_index, bool reset);
             void update_device_capture(int camera_index, bool reset);
+            void set_zmq_address(std::string i_color_address, std::string i_position_address);
             int get_num_ready_cam();
             int get_num_cap_cam();
 
@@ -53,7 +56,13 @@ namespace uvgvolucap {
     }
 
     namespace API {
-        void test();
+        struct input_config {
+            std::string config_path;
+            std::string color_address;
+            std::string position_address;
+        };
+
+        void run(std::string config_path, std::string color_address, std::string position_address);
     }
 }
 
