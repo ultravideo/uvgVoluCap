@@ -14,6 +14,10 @@
 
 namespace uvgvolucap {
     namespace geometry {  
+        /**
+         * @brief Struct representing a 3D vector with unsigned 8-bit integer components.
+         * 
+         * */
         struct VoxelData {
             size_t index;
             int count;
@@ -46,6 +50,9 @@ namespace uvgvolucap {
 			uint8_t v[4]; /**< Array representation of a vector */
 		} _bgra_t;
 
+        /** 
+        * @brief Struct representing a 3D vector with unsigned 8-bit integer components.
+        **/
         typedef struct vec3u8 {
             uint8_t x;
             uint8_t y;
@@ -58,6 +65,10 @@ namespace uvgvolucap {
             vec3u8(uint8_t _x, uint8_t _y, uint8_t _z) : x(_x), y(_y), z(_z) {}
         } vec3u8;
 
+        /**
+         * @brief Struct representing a 3D vector with unsigned 16-bit integer components.
+         * 
+         * */
         typedef struct vect3u16 {
             uint16_t x;
             uint16_t y;
@@ -87,7 +98,7 @@ namespace uvgvolucap {
 #endif   
 
         /**
-		 * @brief Class representing a OpenGL point cloud.
+		 * @brief Class representing a point cloud.
 		 */
 		class PointCloud
 		{
