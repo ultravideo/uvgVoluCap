@@ -133,6 +133,16 @@ namespace uvgvolucap {
              * @param m_merge_buffer The merge buffer point cloud.
              */
             void pack_data(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer);
+        
+            /**
+             * @brief Voxelize data.
+             * @details This function is used to voxelize the data. This is the function job for the thread queue to voxelize the data from 
+             * the fragment point cloud and merge buffer point cloud.
+             * 
+             * @param m_merge_buffer The merge buffer point cloud.
+             * @param slice_index The index of the slice.
+             */
+            void voxelize_data(std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer, int slice_index);
         };
     }
 
@@ -155,7 +165,7 @@ namespace uvgvolucap {
          * @param color_address The color address.
          * @param position_address The position address.
          */
-        void run(std::string config_path, std::string color_address, std::string position_address);
+        void k4a_run(input_config config);
     }
 }
 

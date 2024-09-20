@@ -95,7 +95,7 @@ namespace uvgvolucap {
          * @param is_voxelized The boolean value for voxelized.
          * @return bool The boolean value for the initialization of the connected device.
          */
-        bool init_connected_device(_kinect_device_ptr_vector devices, std::string config_path, bool &is_voxelized);
+        bool init_connected_k4a_device(_kinect_device_ptr_vector k4a_devices, std::string config_path, bool &is_voxelized);
 
         /**
          * @brief Start capture.
@@ -105,7 +105,7 @@ namespace uvgvolucap {
          * @param thread_queue The thread queue.
          * @param _sync_manager The sync manager.
          */
-        void start_capture(_kinect_device_ptr_vector devices, std::shared_ptr<ThreadQueue> thread_queue, std::shared_ptr<SyncManager> _sync_manager);
+        void kinect_start_capture(_kinect_device_ptr_vector k4a_devices, std::shared_ptr<ThreadQueue> thread_queue, std::shared_ptr<SyncManager> _sync_manager);
     } // namespace camera
 } // namespace uvgvolucap
 

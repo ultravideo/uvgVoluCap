@@ -139,29 +139,95 @@ namespace uvgvolucap {
 			 * @param cloud The point cloud to be added.
 			 * @return The resulting point cloud.
 			 */
-			PointCloud operator+(const PointCloud &cloud) const;
+			PointCloud operator+(const PointCloud &cloud) const;	
 
-			virtual void finallized() = 0;		
+            /**
+             * @brief Clear everything in the point cloud.
+            */
             void clear();
+
+            /**
+             * @brief Resize the point cloud.
+             * @param size The new size of the point cloud.
+            */
 			void resize(size_t size);
+            
+            /**
+             * @brief Add a point to the point cloud.
+             * @param x The x coordinate of the point.
+             * @param y The y coordinate of the point.
+             * @param z The z coordinate of the point.
+             * @param r The red component of the point.
+             * @param g The green component of the point.
+             * @param b The blue component of the point.
+            */
             void add_point(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b);
-			bool reach_limitsize();
+
+            /**
+             * @brief This function is called when the point cloud is done with adding points, since the mechanism of resizing the vector in add_point is optimized for performance.
+            */
+			virtual void finallized() = 0;	
 
 #ifdef POINT_UINT16
+            /**
+             * @brief Get the position of a point in the point cloud by index.
+             * @param index The index of the point.
+             * @return The data of x and y and z of the point in unsigned 16-bit integer format.
+            */
             const vect3u16& get_position_by_index(size_t index) const;
+
+            /**
+             * @brief Get the positions of all the points in the point cloud.
+             * @return The container of the positions of all the points in the point cloud.
+            */
             const _points_vec3u16_ptr getPositionsVec() const;
 #else
-			const glm::vec3& get_position_by_index(size_t index) const;
-			const _points_vec3_ptr getPositionsVec() const;
+            /**
+             * @brief Get the position of a point in the point cloud by index.
+             * @param index The index of the point.
+             * @return The data of x and y and z of the point in float format.
+            */
+            const glm::vec3& get_position_by_index(size_t index) const;
+
+            /**
+             * @brief Get the positions of all the points in the point cloud.
+             * @return The container of the positions of all the points in the point cloud.
+            */
+            const _points_vec3_ptr getPositionsVec() const;
 #endif
 
 #ifdef COLOR_UCHAR
+            /**
+             * @brief Get the attribute of a point in the point cloud by index.
+             * @param index The index of the point.
+             * @return The data of r and g and b of the point in unsigned 8-bit integer format.
+            */
             const vec3u8& get_attribute_by_index(size_t index) const;
+
+            /**
+             * @brief Get the attributes of all the points in the point cloud.
+             * @return The container of the attributes of all the points in the point cloud.
+            */
 			const _attributes_vec3u8_ptr getAttributesVec() const;
 #else
-			const glm::vec3& get_attribute_by_index(size_t index) const;
+            /**
+             * @brief Get the attribute of a point in the point cloud by index.
+             * @param index The index of the point.
+             * @return The data of r and g and b of the point in float format.
+            */
+            const glm::vec3& get_attribute_by_index(size_t index) const;
+
+            /**
+             * @brief Get the attributes of all the points in the point cloud.
+             * @return The container of the attributes of all the points in the point cloud.
+            */
 			const _attributes_vec3f_ptr getAttributesVec() const;
 #endif
+
+            /**
+             * @brief Get the maximum size of the point cloud.
+             * @return The maximum size of the point cloud.
+            */
             size_t max_size() const;
 		};
 
@@ -183,15 +249,49 @@ namespace uvgvolucap {
             public:
                 PclFragment();
                 ~PclFragment();
+
+                /** 
+                 * @brief Prepares the fragment to be merged into the merge buffer.
+                */
                 bool prep_to_merge_buffer(std::shared_ptr<MergeBufferPointCloud> _merge_buffer);
+
+                /** 
+                 * @brief Copies the fragment to the merge buffer.
+                */
                 void copy_to_merge_buffer();
+
+                /** 
+                 * @brief Sets the maximum bound of the subspace.
+                 * @param x The x coordinate of the maximum bound.
+                 * @param y The y coordinate of the maximum bound.
+                 * @param z The z coordinate of the maximum bound.
+                */
                 void set_min_bound(int x, int y, int z);
+
+                /** 
+                 * @brief Sets the minimum bound of the subspace.
+                 * @param x The x coordinate of the minimum bound.
+                 * @param y The y coordinate of the minimum bound.
+                 * @param z The z coordinate of the minimum bound.
+                */
                 void set_max_bound(int x, int y, int z);
+
+                /** 
+                 * @brief Adds a point to the slice fragment and filter again in the subspace using the distance from the point to the origin.
+                 * @param x The x coordinate of the point.
+                 * @param y The y coordinate of the point.
+                 * @param z The z coordinate of the point.
+                 * @param r The red component of the point.
+                 * @param g The green component of the point.
+                 * @param b The blue component of the point.
+                 * @param origin The origin of the subspace.
+                */
                 void add_point_subspace(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b, glm::vec3 origin);
 #ifdef COLOR_UCHAR
-                void voxlelization_add_point(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b);
+                
+                void voxlelize(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b);
 #else
-                void voxlelization_add_point(float x, float y, float z, float r, float g, float b);
+                void voxlelize(float x, float y, float z, float r, float g, float b);
 #endif
                 void finallized() override;
         };

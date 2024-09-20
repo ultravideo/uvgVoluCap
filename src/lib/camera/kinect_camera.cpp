@@ -219,6 +219,7 @@ namespace uvgvolucap {
                     break;
                 }
                 else {
+                    // This is a workaround for the issue that the first capture is always failed.
                     try_count++;
                     if (try_count > 5) {
                         break;
@@ -522,20 +523,6 @@ namespace uvgvolucap {
             std::chrono::duration<double> elapsed_time = end_time - start_time;
             Logger::log(LogLevel::INFO, "pack_fragment", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
 #endif
-        }
-
-        void Kinect::voxelization(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::PclFragment> voxelized_pcl) {
-
-            for (size_t i = 0; i < fragment_pcl->max_size(); i++)
-            {
-                auto point = fragment_pcl->get_position_by_index(i);
-                auto color = fragment_pcl->get_attribute_by_index(i);
-#ifdef POINT_UINT16
-                voxelized_pcl->voxlelization_add_point(static_cast<float>(point.x), static_cast<float>(point.y), static_cast<float>(point.z), color.x, color.y, color.z);
-#else
-                voxelized_pcl->voxlelization_add_point(point.x, point.y, point.z, color.x, color.y, color.z);
-#endif
-            }
         }
 
         // Setup lineup for pointcloud production line

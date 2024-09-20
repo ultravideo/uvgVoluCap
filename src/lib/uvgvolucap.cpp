@@ -30,6 +30,22 @@ namespace uvgvolucap {
             }
         }
 
+        void PointCloudFactory::voxelize_data(std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer, int slice_index) {
+            std::shared_ptr<geometry::PclFragment> subspace_slice = std::make_shared<geometry::PclFragment>();
+            
+            for (size_t i = 0; i < m_merge_buffer->slice_components->size(); i++) {
+                for (size_t j = 0; j < m_merge_buffer->slice_components->at(i)->at(slice_index)->max_size(); j++) {
+                    auto point = m_merge_buffer->slice_components->at(i)->at(slice_index)->get_position_by_index(j);
+                    auto color = m_merge_buffer->slice_components->at(i)->at(slice_index)->get_attribute_by_index(j);
+                    subspace_slice->voxlelize(point.x, point.y, point.z, color.x, color.y, color.z);
+                }
+                subspace_slice->finallized();
+                m_merge_buffer->slice_components->at(i)->at(slice_index)->clear();
+            }
+            pack_data(subspace_slice, m_merge_buffer);
+            subspace_slice->clear();
+        }
+
         void PointCloudFactory::execute_sync_with_voxelize() {
             zmq::context_t context{1};
 
@@ -42,22 +58,6 @@ namespace uvgvolucap {
             size_t sent_frame_count = 0;
 
             auto dummy_funct = [&]() { return; };
-
-            auto voxelize = [&](std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer, int slice_index) {
-                std::shared_ptr<geometry::PclFragment> subspace_slice = std::make_shared<geometry::PclFragment>();
-                
-                for (size_t i = 0; i < m_merge_buffer->slice_components->size(); i++) {
-                    for (size_t j = 0; j < m_merge_buffer->slice_components->at(i)->at(slice_index)->max_size(); j++) {
-                        auto point = m_merge_buffer->slice_components->at(i)->at(slice_index)->get_position_by_index(j);
-                        auto color = m_merge_buffer->slice_components->at(i)->at(slice_index)->get_attribute_by_index(j);
-                        subspace_slice->voxlelization_add_point(point.x, point.y, point.z, color.x, color.y, color.z);
-                    }
-                    subspace_slice->finallized();
-                    m_merge_buffer->slice_components->at(i)->at(slice_index)->clear();
-                }
-                pack_data(subspace_slice, m_merge_buffer);
-                subspace_slice->clear();
-            };
 
             std::condition_variable disconnet_cv;
             auto send_data = [&](std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer) {
@@ -91,7 +91,6 @@ namespace uvgvolucap {
                 Logger::log(LogLevel::INFO, "Sender Zmq", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
 #endif
                 m_merge_buffer->curr_index = 0;
-                // m_merge_buffer->slice_fragments->clear();
                 m_merge_buffer->slice_components->clear();
                 
             };
@@ -120,7 +119,7 @@ namespace uvgvolucap {
 
                 std::vector<std::shared_ptr<uvgvolucap::Job>> voxel_jobs;
                 for (int i = 0; i < sync_manager_handler->m_merge_buffer->step; i++) {
-                    std::shared_ptr<uvgvolucap::Job> voxel_job = std::make_shared<uvgvolucap::Job>("VoxelJob", 4, voxelize, sync_manager_handler->m_merge_buffer, i);
+                    std::shared_ptr<uvgvolucap::Job> voxel_job = std::make_shared<uvgvolucap::Job>("VoxelJob", 4, &PointCloudFactory::voxelize_data, this, sync_manager_handler->m_merge_buffer, i);
                     voxel_job->addDependency(dummy_job);
                     curr_send_job->addDependency(voxel_job);
                     voxel_jobs.push_back(voxel_job);
@@ -336,35 +335,30 @@ namespace uvgvolucap {
     }
 
     namespace API {
-        void run(std::string config_path, std::string color_address, std::string position_address) {
-
-            std::cout << "config_path: " << config_path << std::endl;
-            std::cout << "color_address: " << color_address << std::endl;
-            std::cout << "position_address: " << position_address << std::endl;
-
-            _kinect_device_ptr_vector devices = std::make_shared<std::vector<camera::_kinect_device_ptr>>();
+        void k4a_run(input_config config) {
+            _kinect_device_ptr_vector k4a_devices = std::make_shared<std::vector<camera::_kinect_device_ptr>>();
 
             bool is_voxelized = false;
-            bool init_success = camera::init_connected_device(devices, config_path, is_voxelized);  
+            bool init_success = camera::init_connected_k4a_device(k4a_devices, config.config_path, is_voxelized);  
             if (!init_success) { 
                 Logger::log(LogLevel::ERROR, "INIT", "Initialization failed\n");
                 return; 
             }
 
             core::PointCloudFactory factory;
-            factory.set_zmq_address(color_address, position_address);
-            factory.set_sync_limit(devices->size()); 
+            factory.set_zmq_address(config.color_address, config.position_address);
+            factory.set_sync_limit(k4a_devices->size()); 
             factory.set_voxelization_mode(is_voxelized);
-            factory.start_producing(camera::start_capture, devices);
+            factory.start_producing(camera::kinect_start_capture, k4a_devices);
 
-            for (auto& device : *devices) {
-                device->stop();
+            for (auto& kdevice : *k4a_devices) {
+                kdevice->stop();
             }
 
-            //Sleep for 2s to allow the threads to finish
+            //Sleep for 2s to allow the device threads to finish
             std::this_thread::sleep_for(std::chrono::seconds(2));
 
-            Logger::log(LogLevel::INFO, "TEST", "Test finished\n");
+            Logger::log(LogLevel::INFO, "APP", "CAPTURE FINISHED\n");
             exit(EXIT_SUCCESS);
         }
     } // namespace API

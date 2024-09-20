@@ -115,14 +115,10 @@ namespace uvgvolucap {
 		}
 
 		void PointCloud::finallized() 
+
 		{
 			positions->resize(m_size);
 			attributes->resize(m_size);
-		}
-
-		bool PointCloud::reach_limitsize()
-		{
-			return m_size >= m_max_size;
 		}
 
 		bool PointCloud::has_points() const { return positions->size() > 0; };
@@ -199,10 +195,10 @@ namespace uvgvolucap {
 		}
 
 #ifdef COLOR_UCHAR
-		void PclFragment::voxlelization_add_point(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b) {
+		void PclFragment::voxlelize(float x, float y, float z, uint8_t r, uint8_t g, uint8_t b) {
 			vec3u8 color = vec3u8(r, g, b);
 #else
-		void PclFragment::voxlelization_add_point(float x, float y, float z, float r, float g, float b) {
+		void PclFragment::voxlelize(float x, float y, float z, float r, float g, float b) {
 			glm::vec3 color = glm::vec3(r, g, b);
 #endif
 			

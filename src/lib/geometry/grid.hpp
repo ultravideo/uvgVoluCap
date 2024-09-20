@@ -16,9 +16,6 @@ namespace uvgvolucap {
             
             glm::vec3 origin = glm::vec3(0.0f, 0.0f, 0.0f);
 
-            //Nodes
-            float node_size; 
-
             //Real world max size of the grid
             float real_world_max_horiz = 2.0f;     //x/y in real world
             float real_world_min_horiz = -2.0f;	//x/y in real world
