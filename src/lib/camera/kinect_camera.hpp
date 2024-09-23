@@ -11,6 +11,7 @@
 
 namespace uvgvolucap {
     namespace camera{
+        #define CAPTURE_TIMEOUT 500 /**< Capture timeout */
         /**
          * @brief Struct for main setting of the camera.
          * @details This struct contains the main setting of the camera.
@@ -230,7 +231,7 @@ namespace uvgvolucap {
 
         public:
             Kinect(uint32_t _index, uint32_t sync_index, std::string _serial, nlohmann::json _config);
-            ~Kinect() = default;
+            ~Kinect();
 
             /**
              * @brief Get the serial number using the Azure Kinect SDK.

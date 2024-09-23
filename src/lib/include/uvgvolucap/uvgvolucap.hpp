@@ -11,7 +11,12 @@
 #define RESET 99
 
 namespace uvgvolucap {
-    namespace core {
+    namespace API {
+        enum CameraType {
+            KINECT,
+            REALSENSE
+        };
+
         class PointCloudFactory {
         private:
             std::shared_ptr<uvgvolucap::ThreadQueue> thread_queue = std::make_shared<uvgvolucap::ThreadQueue>(40);
@@ -144,9 +149,7 @@ namespace uvgvolucap {
              */
             void voxelize_data(std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer, int slice_index);
         };
-    }
 
-    namespace API {
         /**
          * @brief Input configuration.
          * @details This struct contains the input configuration for the point cloud factory.
@@ -158,6 +161,24 @@ namespace uvgvolucap {
         };
 
         /**
+         * @brief Setup configuration.
+         * @details This struct contains the setup configuration for the point cloud factory.
+         */
+        struct setup_config {
+            std::shared_ptr<std::vector<uvgvolucap::camera::_kinect_device_ptr>> k4a_devices = nullptr;
+            bool is_voxelized = false;
+        };
+
+        /**
+         * @brief Setup the connected devices.
+         * @details This function is used to setup the connected devices based on the configuration file.
+         * 
+         * @param config The input configuration.
+         * @param setup_config The setup configuration.
+         */
+        void setup_k4a_devices(input_config &config, setup_config &setup_config);
+
+        /**
          * @brief Run the point cloud factory.
          * @details This function is used to run the point cloud factory from the provided configuration file and zmq addresses from user.
          * 
@@ -165,7 +186,7 @@ namespace uvgvolucap {
          * @param color_address The color address.
          * @param position_address The position address.
          */
-        void k4a_run(input_config config);
+        void k4a_run(input_config &config, setup_config &setup_config);
     }
 }
 

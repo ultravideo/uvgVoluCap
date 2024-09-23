@@ -2,7 +2,7 @@
 #include <unordered_map>
 
 namespace uvgvolucap {
-    namespace core {
+    namespace API {
         PointCloudFactory::PointCloudFactory() {
             sync_manager_handler->update_device_ready_fptr.reset(new std::function<void(int, bool)>(std::bind(&PointCloudFactory::update_device_ready, this, std::placeholders::_1, std::placeholders::_2)));
             sync_manager_handler->update_device_capture_fptr.reset(new std::function<void(int, bool)>(std::bind(&PointCloudFactory::update_device_capture, this, std::placeholders::_1, std::placeholders::_2)));
@@ -10,8 +10,8 @@ namespace uvgvolucap {
             sync_manager_handler->get_num_cap_cam_fptr.reset(new std::function<int()>(std::bind(&PointCloudFactory::get_num_cap_cam, this)));
         }
 
-        PointCloudFactory::~PointCloudFactory() {
-            
+        PointCloudFactory::~PointCloudFactory() {   
+            thread_queue->stop();
         }
 
         void PointCloudFactory::pack_data(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer) {
@@ -326,40 +326,41 @@ namespace uvgvolucap {
             else {
                 execute_sync();
             }
-            thread_queue->stop();
         }
 
         void PointCloudFactory::set_voxelization_mode(bool mode) {
             is_voxelize_mode = mode;
         }
-    }
 
-    namespace API {
-        void k4a_run(input_config config) {
-            _kinect_device_ptr_vector k4a_devices = std::make_shared<std::vector<camera::_kinect_device_ptr>>();
+        /* ###################################################### */
 
-            bool is_voxelized = false;
-            bool init_success = camera::init_connected_k4a_device(k4a_devices, config.config_path, is_voxelized);  
+        void setup_k4a_devices(input_config &config, setup_config &setup_config) {
+            setup_config.k4a_devices = std::make_shared<std::vector<uvgvolucap::camera::_kinect_device_ptr>>();
+            bool init_success = camera::init_connected_k4a_device(setup_config.k4a_devices, config.config_path, setup_config.is_voxelized);  
             if (!init_success) { 
-                Logger::log(LogLevel::ERROR, "INIT", "Initialization failed\n");
+                Logger::log(LogLevel::ERROR, "uvgVoluCap", "Initialization failed\n");
                 return; 
+            } else {
+                Logger::log(LogLevel::INFO, "uvgVoluCap", "Initialization success\n");
             }
+        }
 
-            core::PointCloudFactory factory;
+
+        void k4a_run(input_config &config, setup_config &setup_config) {
+            API::PointCloudFactory factory;
             factory.set_zmq_address(config.color_address, config.position_address);
-            factory.set_sync_limit(k4a_devices->size()); 
-            factory.set_voxelization_mode(is_voxelized);
-            factory.start_producing(camera::kinect_start_capture, k4a_devices);
-
-            for (auto& kdevice : *k4a_devices) {
-                kdevice->stop();
-            }
+            factory.set_sync_limit(setup_config.k4a_devices->size()); 
+            factory.set_voxelization_mode(setup_config.is_voxelized);
+            factory.start_producing(camera::kinect_start_capture, setup_config.k4a_devices);
 
             //Sleep for 2s to allow the device threads to finish
             std::this_thread::sleep_for(std::chrono::seconds(2));
 
+            for (auto& kdevice : *setup_config.k4a_devices) {
+                kdevice->stop();
+            }
+
             Logger::log(LogLevel::INFO, "APP", "CAPTURE FINISHED\n");
-            exit(EXIT_SUCCESS);
         }
     } // namespace API
 } // namespace uvgvolucap

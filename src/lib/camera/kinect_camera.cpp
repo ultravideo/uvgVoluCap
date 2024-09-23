@@ -86,6 +86,16 @@ namespace uvgvolucap {
             grid_ptr->set_real_world_params(device_info.filter_config.max_xy, device_info.filter_config.min_xy, device_info.filter_config.max_z, device_info.filter_config.min_z);
         }
 
+        Kinect::~Kinect()
+        {
+            if (capture_thread_ptr->joinable())
+            {
+                capture_thread_ptr->join();
+            }
+            k4a_device_stop_cameras(m_device);
+            k4a_device_close(m_device);
+        }
+
         void Kinect::init(uint32_t _index, uint32_t _sync_index, std::string _serial, nlohmann::json _config) const
         {
             device_info.index = _index;
@@ -168,7 +178,7 @@ namespace uvgvolucap {
         {
             if (is_started_flag){
                 is_started_flag = false;
-                k4a_device_stop_cameras(m_device);
+                sync_manager->Cap_permission_cv.notify_all();
             }
         }
 
@@ -203,7 +213,7 @@ namespace uvgvolucap {
             k4a_wait_result_t result = K4A_WAIT_RESULT_TIMEOUT;
             while (true) {
                 k4a_capture_t capture;
-                result = k4a_device_get_capture(m_device, &capture, 500);
+                result = k4a_device_get_capture(m_device, &capture, CAPTURE_TIMEOUT);
                 if (result == K4A_WAIT_RESULT_SUCCEEDED) {
                     k4a_image_t depth_image = k4a_capture_get_depth_image(capture);
                     k4a_image_t color_image = k4a_capture_get_color_image(capture);
@@ -545,15 +555,19 @@ namespace uvgvolucap {
             {
                 sync_manager->Cap_permission_cv.wait(lock, [&]()
                 {
-                    return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.sync_index)) != 0;
+                    return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.sync_index)) != 0 || !is_started_flag;
                 });
+                
+                if (!is_started_flag) {
+                    break;
+                }
                 
 #ifdef SETUP_LINE_TIMER
                 auto start_time = std::chrono::high_resolution_clock::now();
 #endif
                 k4a_capture_t capture;
-                result = k4a_device_get_capture(m_device, &capture, 500);
-                if (result == K4A_WAIT_RESULT_SUCCEEDED)
+                result = k4a_device_get_capture(m_device, &capture, CAPTURE_TIMEOUT);
+                if (result == K4A_WAIT_RESULT_SUCCEEDED && is_started_flag)
                 {
                     (*sync_manager->update_device_capture_fptr)(device_info.sync_index, false);
 
@@ -587,18 +601,23 @@ namespace uvgvolucap {
                     thread_queue->submitJob(transf_vp_job);
                     thread_queue->submitJob(process_frame_job);
                     thread_queue->submitJob(pack_fragment_job);
-
-                }
-                else if (result == K4A_WAIT_RESULT_FAILED)
-                {
                     k4a_capture_release(capture);
-                    stop();
-                    Logger::log(LogLevel::ERROR, device_info.serial_number, "Fail to get capture\n");
-                    exit(EXIT_FAILURE);
+                    (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
+                    continue;   
+                }
+                else if (result == K4A_WAIT_RESULT_FAILED && is_started_flag)
+                {
+                    if (is_started_flag)
+                    {
+                        k4a_capture_release(capture);
+                        stop();
+                        Logger::log(LogLevel::ERROR, device_info.serial_number, "Fail to get capture\n");
+                        exit(EXIT_FAILURE);
+                    } else {
+                        break;
+                    }
                 }
 
-                k4a_capture_release(capture);
-                (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
 
 #ifdef SETUP_LINE_TIMER
                 auto end_time = std::chrono::high_resolution_clock::now();
@@ -606,6 +625,7 @@ namespace uvgvolucap {
                 Logger::log(LogLevel::INFO, "Setup for 1 frame", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
 #endif
             }
+            Logger::log(LogLevel::INFO, device_info.serial_number, "Capture thread is stopped\n");
         }
 
         void Kinect::pointcloud_production_line_with_subsapce() {
@@ -626,16 +646,19 @@ namespace uvgvolucap {
             {
                 sync_manager->Cap_permission_cv.wait(lock, [&]()
                 {
-                    return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.sync_index)) != 0;
+                    return (((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.sync_index)) != 0) || !is_started_flag;
                 });
+                
+                // if (!is_started_flag) {
+                //     break;
+                // }
 
 #ifdef SETUP_LINE_TIMER
                 auto start_time = std::chrono::high_resolution_clock::now();
 #endif
-        
                 k4a_capture_t capture;
-                result = k4a_device_get_capture(m_device, &capture, 500);
-                if (result == K4A_WAIT_RESULT_SUCCEEDED)
+                result = k4a_device_get_capture(m_device, &capture, CAPTURE_TIMEOUT);
+                if (result == K4A_WAIT_RESULT_SUCCEEDED && is_started_flag)
                 {
                     (*sync_manager->update_device_capture_fptr)(device_info.sync_index, false);
                     
@@ -664,8 +687,11 @@ namespace uvgvolucap {
                     sync_manager->_job->addDependency(process_frame_job);
                     thread_queue->submitJob(transf_vp_job);
                     thread_queue->submitJob(process_frame_job);
+                    k4a_capture_release(capture);
+                    (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
+                    continue;
                 }
-                else if (result == K4A_WAIT_RESULT_FAILED)
+                else if (result == K4A_WAIT_RESULT_FAILED && is_started_flag)
                 {
                     k4a_capture_release(capture);
                     stop();
@@ -673,8 +699,6 @@ namespace uvgvolucap {
                     exit(EXIT_FAILURE);
                 }
 
-                k4a_capture_release(capture);
-                (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
 
 #ifdef SETUP_LINE_TIMER
                 auto end_time = std::chrono::high_resolution_clock::now();
@@ -687,6 +711,8 @@ namespace uvgvolucap {
                 frame_count++;
 #endif
             }
+
+            Logger::log(LogLevel::INFO, device_info.serial_number, "Capture thread is stopped\n");
         }
     } // namespace camera
 }   // namespace uvgvolucap
