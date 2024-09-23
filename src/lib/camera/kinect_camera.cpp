@@ -4,6 +4,78 @@
 
 namespace uvgvolucap {
     namespace camera{
+        Frame::Frame(int _id, k4a_image_t depth_, k4a_image_t color_, int min_bound_[3], int max_bound_[3], int number_of_slices_)
+            :   id(_id), 
+                depth_image(depth_), 
+                color_image(color_), 
+                min_bound{min_bound_[0], min_bound_[1], min_bound_[2]}, 
+                max_bound{max_bound_[0], max_bound_[1], max_bound_[2]}, 
+                number_of_slices(number_of_slices_) {
+
+            for (int i = 0; i < number_of_slices; i++)
+            {
+                std::shared_ptr<geometry::PclFragment> subspace_slice = std::make_shared<geometry::PclFragment>();
+                subspace_slice->set_min_bound(min_bound[0], i * (max_bound[1] - min_bound[1]) / number_of_slices, min_bound[2]);
+                subspace_slice->set_max_bound(max_bound[0], (i + 1) * (max_bound[1] - min_bound[1]) / number_of_slices, max_bound[2]);
+                subspace_fragments->push_back(subspace_slice);
+            }
+        }
+
+        int Frame::get_number_of_slices() {
+            return number_of_slices;
+        }
+
+        int Frame::get_max_bound(int index) {
+            return max_bound[index];
+        }
+
+        int Frame::get_min_bound(int index) {
+            return min_bound[index];
+        }
+
+        k4a_image_t Frame::get_depth_image() {
+            return depth_image;
+        }
+
+        k4a_image_t Frame::get_color_image() {
+            return color_image;
+        }
+
+        geometry::_slice_fragments_ptr Frame::get_subspace_fragments() {
+            return subspace_fragments;
+        }
+
+        std::shared_ptr<geometry::PclFragment> Frame::get_frame_pointcloud() {
+            return fragment_pcl;
+        }
+
+        void Frame::set_depth_image(k4a_image_t depth_) {
+            depth_image = depth_;
+        }
+
+        void Frame::set_color_image(k4a_image_t color_) {
+            color_image = color_;
+        }
+
+
+        void Frame::set_min_bound(int x, int y, int z) {
+            min_bound[0] = x;
+            min_bound[1] = y;
+            min_bound[2] = z;
+        }
+
+        void Frame::set_max_bound(int x, int y, int z) {
+            max_bound[0] = x;
+            max_bound[1] = y;
+            max_bound[2] = z;
+        }
+
+        void Frame::set_number_of_slices(int num) {
+            number_of_slices = num;
+        }
+
+        /* ############################################################################################## */    
+
         Kinect::Kinect(uint32_t _index, uint32_t _sync_index, std::string _serial, nlohmann::json _config) : BasedCamera()
         {
             init(_index, _sync_index, _serial, _config);
@@ -14,12 +86,21 @@ namespace uvgvolucap {
             grid_ptr->set_real_world_params(device_info.filter_config.max_xy, device_info.filter_config.min_xy, device_info.filter_config.max_z, device_info.filter_config.min_z);
         }
 
+        Kinect::~Kinect()
+        {
+            if (capture_thread_ptr->joinable())
+            {
+                capture_thread_ptr->join();
+            }
+            k4a_device_stop_cameras(m_device);
+            k4a_device_close(m_device);
+        }
+
         void Kinect::init(uint32_t _index, uint32_t _sync_index, std::string _serial, nlohmann::json _config) const
         {
             device_info.index = _index;
             device_info.sync_index = _sync_index;
             device_info.serial_number = _serial;
-            middle_bound = static_cast<size_t>(std::pow(2,  _config["grid"]["geometry_precision"] - 1));
 
             device_info.system_config.color_resolution = _config["setting"]["color_resolution"].get<int>();
             device_info.system_config.depth_resolution = _config["setting"]["depth_resolution"].get<int>();
@@ -34,6 +115,15 @@ namespace uvgvolucap {
             device_info.filter_config.min_xy = _config["filter"]["min_xy"].get<float>();
             device_info.filter_config.max_z = _config["filter"]["max_z"].get<float>();
             device_info.filter_config.min_z = _config["filter"]["min_z"].get<float>();
+
+            device_info.pointcloud_config.geometry_precision = static_cast<size_t>(std::pow(2,  _config["grid"]["geometry_precision"] - 1));
+            device_info.pointcloud_config.min_bound[0] = _config["grid"]["min_bound"]["x"].get<int>();
+            device_info.pointcloud_config.min_bound[1] = _config["grid"]["min_bound"]["y"].get<int>();
+            device_info.pointcloud_config.min_bound[2] = _config["grid"]["min_bound"]["z"].get<int>();
+            device_info.pointcloud_config.max_bound[0] = _config["grid"]["max_bound"]["x"].get<int>();
+            device_info.pointcloud_config.max_bound[1] = _config["grid"]["max_bound"]["y"].get<int>();
+            device_info.pointcloud_config.max_bound[2] = _config["grid"]["max_bound"]["z"].get<int>();
+            device_info.pointcloud_config.number_of_slices = _config["grid"]["number_of_slices"].get<int>();
 
             auto device_attribute = _config["devices_config"].find(device_info.serial_number);
             device_info.roi.start_x = device_attribute->at("ROI").at("start_x").get<size_t>();
@@ -87,9 +177,8 @@ namespace uvgvolucap {
         void Kinect::stop()
         {
             if (is_started_flag){
-                close();
-                k4a_device_stop_cameras(m_device);
                 is_started_flag = false;
+                sync_manager->Cap_permission_cv.notify_all();
             }
         }
 
@@ -124,7 +213,7 @@ namespace uvgvolucap {
             k4a_wait_result_t result = K4A_WAIT_RESULT_TIMEOUT;
             while (true) {
                 k4a_capture_t capture;
-                result = k4a_device_get_capture(m_device, &capture, 500);
+                result = k4a_device_get_capture(m_device, &capture, CAPTURE_TIMEOUT);
                 if (result == K4A_WAIT_RESULT_SUCCEEDED) {
                     k4a_image_t depth_image = k4a_capture_get_depth_image(capture);
                     k4a_image_t color_image = k4a_capture_get_color_image(capture);
@@ -140,6 +229,7 @@ namespace uvgvolucap {
                     break;
                 }
                 else {
+                    // This is a workaround for the issue that the first capture is always failed.
                     try_count++;
                     if (try_count > 5) {
                         break;
@@ -229,13 +319,6 @@ namespace uvgvolucap {
             xy_table_data = (k4a_float2_t *)(void *)k4a_image_get_buffer(xy_table);
         }
 
-        size_t Kinect::classify_subspace(float x, float y, float z)
-        {                                             
-            // std::string binaryString = std::to_string(z < middle_bound) + std::to_string(y < middle_bound) + std::to_string(x < middle_bound);
-            // return static_cast<size_t>(std::stoi(binaryString, 0, 2));
-            return static_cast<size_t>(((z < middle_bound) << 2) + ((y < middle_bound) << 1) + (x < middle_bound));
-        }
-
         void Kinect::start_capture(std::shared_ptr<ThreadQueue> _thread_queue, std::shared_ptr<SyncManager> _sync_manager)
         {
             thread_queue = _thread_queue;
@@ -248,9 +331,6 @@ namespace uvgvolucap {
                 else {
                     switch (get_voxelizer_mode(device_info.system_config.voxelized_mode))
                     {
-                    case VOXELIZER_MAP:
-                        this->pointcloud_production_line_voxelize_with_map();
-                        break;
                     case VOXELIZER_SUBSPACE:
                         this->pointcloud_production_line_with_subsapce();
                         break;
@@ -260,9 +340,6 @@ namespace uvgvolucap {
                         exit(EXIT_FAILURE);
                         break;
                     } 
-
-                    // this->pointcloud_production_line_with_subsapce_subROI();
-  
                 }
             };
             capture_thread_ptr = std::make_shared<std::thread>(capture_function);
@@ -287,16 +364,15 @@ namespace uvgvolucap {
                 }
 
                 status = k4a_transformation_depth_image_to_color_camera(transformation_handle,
-                                                                        frame->depth_image,
+                                                                        frame->get_depth_image(),
                                                                         transformed_image);
                 if (status != K4A_RESULT_SUCCEEDED){
                     Logger::log(LogLevel::ERROR, device_info.serial_number, "Failed to transform depth image to color camera\n");
                     exit(EXIT_FAILURE);
                 }
 
-
-                k4a_image_release(frame->depth_image);
-                frame->depth_image = transformed_image;
+                k4a_image_release(frame->get_depth_image());
+                frame->set_depth_image(transformed_image);
             }
             else
             {
@@ -312,16 +388,16 @@ namespace uvgvolucap {
                 }
 
                 status = k4a_transformation_color_image_to_depth_camera(transformation_handle,
-                                                                        frame->depth_image,
-                                                                        frame->color_image,
+                                                                        frame->get_depth_image(),
+                                                                        frame->get_color_image(),
                                                                         transformed_image);
                 if (status != K4A_RESULT_SUCCEEDED){
                     Logger::log(LogLevel::ERROR, device_info.serial_number, "Failed to transform color image to depth camera\n");
                     exit(EXIT_FAILURE);
                 }
 
-                k4a_image_release(frame->color_image);
-                frame->color_image = transformed_image;
+                k4a_image_release(frame->get_color_image());
+                frame->set_color_image(transformed_image);
             }
 
 #ifdef TRANSFORM_VIEWPOINT_TIMER
@@ -335,11 +411,11 @@ namespace uvgvolucap {
 #ifdef PROCESSING_TIMER
             auto start_time = std::chrono::high_resolution_clock::now();
 #endif
-            int width = k4a_image_get_width_pixels(frame->depth_image);
-            int height = k4a_image_get_height_pixels(frame->depth_image);
+            int width = k4a_image_get_width_pixels(frame->get_depth_image());
+            int height = k4a_image_get_height_pixels(frame->get_depth_image());
 
-            uint16_t *depth_data = (uint16_t *)(void *)k4a_image_get_buffer(frame->depth_image);
-            geometry::_bgra_t *color_data = (geometry::_bgra_t *)(void *)k4a_image_get_buffer(frame->color_image);
+            uint16_t *depth_data = (uint16_t *)(void *)k4a_image_get_buffer(frame->get_depth_image());
+            geometry::_bgra_t *color_data = (geometry::_bgra_t *)(void *)k4a_image_get_buffer(frame->get_color_image());
 
             size_t index = 0;
             std::unordered_map<geometry::VoxelCoord, geometry::VoxelData, geometry::VoxelCoordHash> voxelMap;
@@ -363,18 +439,18 @@ namespace uvgvolucap {
                         float z = (device_info.transformation_matrix[8] * x_o + device_info.transformation_matrix[9] * y_o + device_info.transformation_matrix[10] * z_o + device_info.transformation_matrix[11]);
 
                         // Filter by calculated radius
-                        if (x > device_info.filter_config.min_xy && x < device_info.filter_config.max_xy &&
+                        if (x > device_info.filter_config.min_z && x < device_info.filter_config.max_z &&
                             y > device_info.filter_config.min_xy && y < device_info.filter_config.max_xy &&
                             z > device_info.filter_config.min_z && z < device_info.filter_config.max_z)
                         {
-                            frame->fragment_pcl->add_point(x, y, z, r, g, b);
+                            frame->get_frame_pointcloud()->add_point(x, y, z, r, g, b);
                         }
                     }
                 }
             }
-            frame->fragment_pcl->finallized();
-            k4a_image_release(frame->depth_image);
-            k4a_image_release(frame->color_image);
+            frame->get_frame_pointcloud()->finallized();
+            k4a_image_release(frame->get_depth_image());
+            k4a_image_release(frame->get_color_image());
 
 #ifdef PROCESSING_TIMER
             auto end_time = std::chrono::high_resolution_clock::now();
@@ -387,11 +463,11 @@ namespace uvgvolucap {
 #ifdef PROCESSING_TIMER
             auto start_time = std::chrono::high_resolution_clock::now();
 #endif
-            int width = k4a_image_get_width_pixels(frame->depth_image);
-            int height = k4a_image_get_height_pixels(frame->depth_image);
+            int width = k4a_image_get_width_pixels(frame->get_depth_image());
+            int height = k4a_image_get_height_pixels(frame->get_depth_image());
 
-            uint16_t *depth_data = (uint16_t *)(void *)k4a_image_get_buffer(frame->depth_image);
-            geometry::_bgra_t *color_data = (geometry::_bgra_t *)(void *)k4a_image_get_buffer(frame->color_image);
+            uint16_t *depth_data = (uint16_t *)(void *)k4a_image_get_buffer(frame->get_depth_image());
+            geometry::_bgra_t *color_data = (geometry::_bgra_t *)(void *)k4a_image_get_buffer(frame->get_color_image());
 
             for (size_t row = device_info.roi.start_y ; row < device_info.roi.start_y + device_info.roi.height; row = row + device_info.system_config.subsample_row) {
                 for (size_t col = device_info.roi.start_x; col < device_info.roi.start_x + device_info.roi.width; col = col + device_info.system_config.subsample_col) {
@@ -418,143 +494,24 @@ namespace uvgvolucap {
                         {
                             glm::vec3 grid_point = grid_ptr->real_to_grid(x, y, z);
 
-                            size_t idx = static_cast<size_t>(grid_point.y) / (frame->max_bound[1]/(frame->step));
+                            size_t idx = static_cast<size_t>(grid_point.y) / (frame->get_max_bound(1)/(frame->get_number_of_slices()));
 
-                            if (idx < frame->subspace_fragments->size())
+                            if (idx < frame->get_subspace_fragments()->size())
                             {
-                                frame->subspace_fragments->at(idx)->add_point_subspace(grid_point.x, grid_point.y, grid_point.z, r, g, b);
+                                frame->get_subspace_fragments()->at(idx)->add_point_subspace(grid_point.x, grid_point.y, grid_point.z, r, g, b, grid_ptr->get_grid_origin());   
                             }
-                            // size_t subspace_id = classify_subspace(grid_point.x, grid_point.y, grid_point.z);
-                            // frame->subspace_fragments->at(subspace_id)->add_point(grid_point.x, grid_point.y, grid_point.z, r, g, b);
                         }
                     }
                 }
             }
 
-            for (size_t i = 0; i < frame->subspace_fragments->size(); i++)
+            for (size_t i = 0; i < frame->get_subspace_fragments()->size(); i++)
             {
-                frame->subspace_fragments->at(i)->finallized();
+                frame->get_subspace_fragments()->at(i)->finallized();
             }
 
-            k4a_image_release(frame->depth_image);
-            k4a_image_release(frame->color_image);
-
-#ifdef PROCESSING_TIMER
-            auto end_time = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double> elapsed_time = end_time - start_time;
-            Logger::log(LogLevel::INFO, "Process", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
-#endif
-        }
-
-        void Kinect::process_frame_voxel_subspace_subROI(std::shared_ptr<Frame> frame, size_t start_x, size_t start_y, size_t width, size_t height) {
-#ifdef PROCESSING_TIMER
-            auto start_time = std::chrono::high_resolution_clock::now();
-#endif
-            int real_width = k4a_image_get_width_pixels(frame->depth_image);
-            int real_height = k4a_image_get_height_pixels(frame->depth_image);
-
-            uint16_t *depth_data = (uint16_t *)(void *)k4a_image_get_buffer(frame->depth_image);
-            geometry::_bgra_t *color_data = (geometry::_bgra_t *)(void *)k4a_image_get_buffer(frame->color_image);
-
-            for (size_t row = start_y ; row < start_y + height; row = row + device_info.system_config.subsample_row) {
-                for (size_t col = start_x; col < start_x + width; col = col + device_info.system_config.subsample_col) {
-                    size_t i = row * real_width + col;
-
-                    if (depth_data[i] != 0 && !std::isnan(xy_table_data[i].xy.x) && !std::isnan(xy_table_data[i].xy.y)) // && depth_data[i] < 1702)
-                    {
-                        uint8_t b = color_data[i].bgra.b;
-                        uint8_t g = color_data[i].bgra.g;
-                        uint8_t r = color_data[i].bgra.r;
-
-                        float z_o = static_cast<float>(depth_data[i]) / 1000.0f;
-                        float x_o = static_cast<float>((xy_table_data[i].xy.x * z_o));
-                        float y_o = static_cast<float>((xy_table_data[i].xy.y * z_o));
-
-                        float x = (device_info.transformation_matrix[0] * x_o + device_info.transformation_matrix[1] * y_o + device_info.transformation_matrix[2] * z_o + device_info.transformation_matrix[3]);
-                        float y = (device_info.transformation_matrix[4] * x_o + device_info.transformation_matrix[5] * y_o + device_info.transformation_matrix[6] * z_o + device_info.transformation_matrix[7]);
-                        float z = (device_info.transformation_matrix[8] * x_o + device_info.transformation_matrix[9] * y_o + device_info.transformation_matrix[10] * z_o + device_info.transformation_matrix[11]);
-
-                        // Filter by calculated radius
-                        if (x > device_info.filter_config.min_xy && x < device_info.filter_config.max_xy &&
-                            y > device_info.filter_config.min_xy && y < device_info.filter_config.max_xy &&
-                            z > device_info.filter_config.min_z && z < device_info.filter_config.max_z)
-                        {
-                            glm::vec3 grid_point = grid_ptr->real_to_grid(x, y, z);
-
-                            size_t subspace_id = classify_subspace(grid_point.x, grid_point.y, grid_point.z);
-                            frame->subspace_fragments->at(subspace_id)->add_point(x, y, z, r, g, b);
-                        }
-                    }
-                }
-            }
-
-#ifdef PROCESSING_TIMER
-            auto end_time = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double> elapsed_time = end_time - start_time;
-            Logger::log(LogLevel::INFO, "Process", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
-#endif
-        }
-
-        void Kinect::process_frame_voxel_unordermap(std::shared_ptr<Frame> frame) {
-#ifdef PROCESSING_TIMER
-            auto start_time = std::chrono::high_resolution_clock::now();
-#endif
-            int width = k4a_image_get_width_pixels(frame->depth_image);
-            int height = k4a_image_get_height_pixels(frame->depth_image);
-
-            uint16_t *depth_data = (uint16_t *)(void *)k4a_image_get_buffer(frame->depth_image);
-            geometry::_bgra_t *color_data = (geometry::_bgra_t *)(void *)k4a_image_get_buffer(frame->color_image);
-
-            size_t index = 0;
-            std::unordered_map<geometry::VoxelCoord, geometry::VoxelData, geometry::VoxelCoordHash> voxelMap;
-
-            for (size_t row = device_info.roi.start_y ; row < device_info.roi.start_y + device_info.roi.height; row = row + device_info.system_config.subsample_row) {
-                for (size_t col = device_info.roi.start_x; col < device_info.roi.start_x + device_info.roi.width; col = col + device_info.system_config.subsample_col) {
-                    size_t i = row * width + col;
-
-                    if (depth_data[i] != 0 && !std::isnan(xy_table_data[i].xy.x) && !std::isnan(xy_table_data[i].xy.y)) // && depth_data[i] < 1702)
-                    {
-                        uint8_t b = color_data[i].bgra.b;
-                        uint8_t g = color_data[i].bgra.g;
-                        uint8_t r = color_data[i].bgra.r;
-
-                        float z_o = static_cast<float>(depth_data[i]) / 1000.0f;
-                        float x_o = static_cast<float>((xy_table_data[i].xy.x * z_o));
-                        float y_o = static_cast<float>((xy_table_data[i].xy.y * z_o));
-
-                        float x = (device_info.transformation_matrix[0] * x_o + device_info.transformation_matrix[1] * y_o + device_info.transformation_matrix[2] * z_o + device_info.transformation_matrix[3]);
-                        float y = (device_info.transformation_matrix[4] * x_o + device_info.transformation_matrix[5] * y_o + device_info.transformation_matrix[6] * z_o + device_info.transformation_matrix[7]);
-                        float z = (device_info.transformation_matrix[8] * x_o + device_info.transformation_matrix[9] * y_o + device_info.transformation_matrix[10] * z_o + device_info.transformation_matrix[11]);
-
-                        // Filter by calculated radius
-                        if (x > device_info.filter_config.min_xy && x < device_info.filter_config.max_xy &&
-                            y > device_info.filter_config.min_xy && y < device_info.filter_config.max_xy &&
-                            z > device_info.filter_config.min_z && z < device_info.filter_config.max_z)
-                        {
-                            glm::vec3 grid_point = grid_ptr->real_to_grid(x, y, z);
-
-                            geometry::VoxelCoord coord = grid_point;
-                            auto voxel = voxelMap.find(coord);
-                            if (voxel == voxelMap.end()) {
-                                geometry::VoxelData data = {index, 1};
-                                voxelMap.insert({coord, data});
-                                index++;
-                                frame->fragment_pcl->add_point(grid_point.x, grid_point.y, grid_point.z, r, g, b);
-                            }
-                            else {
-                                auto avg_color_by_index = frame->fragment_pcl->get_attribute_by_index(i);
-                                avg_color_by_index.x = (avg_color_by_index.x * voxel->second.count + r) / (voxel->second.count + 1);
-                                avg_color_by_index.y = (avg_color_by_index.y * voxel->second.count + g) / (voxel->second.count + 1);
-                                avg_color_by_index.z = (avg_color_by_index.z * voxel->second.count + b) / (voxel->second.count + 1);
-                                voxel->second.count++;
-                            }
-                        }
-                    }
-                }
-            }
-            frame->fragment_pcl->finallized();
-            k4a_image_release(frame->depth_image);
-            k4a_image_release(frame->color_image);
+            k4a_image_release(frame->get_depth_image());
+            k4a_image_release(frame->get_color_image());
 
 #ifdef PROCESSING_TIMER
             auto end_time = std::chrono::high_resolution_clock::now();
@@ -578,36 +535,7 @@ namespace uvgvolucap {
 #endif
         }
 
-        void Kinect::voxelization(std::shared_ptr<geometry::PclFragment> fragment_pcl, std::shared_ptr<geometry::PclFragment> voxelized_pcl) {
-            std::unordered_map<geometry::VoxelCoord, geometry::VoxelData, geometry::VoxelCoordHash> voxelMap;
-            size_t index = 0;
-
-            for (size_t i = 0; i < fragment_pcl->max_size(); i++) {
-                glm::vec3 point = fragment_pcl->get_position_by_index(i);
-                glm::vec3 color = fragment_pcl->get_attribute_by_index(i);
-
-                auto voxel = voxelMap.find(point);
-                if (voxel == voxelMap.end()) {
-                    geometry::VoxelData data = {index, 1};
-                    voxelMap.insert({point, data});
-                    index++;
-
-                    voxelized_pcl->add_point(point.x, point.y, point.z, static_cast<uint8_t>(color.x*255.0f), static_cast<uint8_t>(color.y*255.0f), static_cast<uint8_t>(color.z*255.0f));
-                }
-                else {
-                    voxel->second.count++;
-                    auto avg_color_by_index = voxelized_pcl->get_attribute_by_index(voxel->second.index);
-                    avg_color_by_index.x = (avg_color_by_index.x * voxel->second.count + color.x) / (voxel->second.count + 1);
-                    avg_color_by_index.y = (avg_color_by_index.y * voxel->second.count + color.y) / (voxel->second.count + 1);
-                    avg_color_by_index.z = (avg_color_by_index.z * voxel->second.count + color.z) / (voxel->second.count + 1);
-                }
-            }          
-            
-            voxelized_pcl->finallized();
-        }
-
         // Setup lineup for pointcloud production line
-
         void Kinect::pointcloud_production_line() {
             if (sync_manager == nullptr)
             {
@@ -627,15 +555,19 @@ namespace uvgvolucap {
             {
                 sync_manager->Cap_permission_cv.wait(lock, [&]()
                 {
-                    return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.sync_index)) != 0;
+                    return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.sync_index)) != 0 || !is_started_flag;
                 });
+                
+                if (!is_started_flag) {
+                    break;
+                }
                 
 #ifdef SETUP_LINE_TIMER
                 auto start_time = std::chrono::high_resolution_clock::now();
 #endif
                 k4a_capture_t capture;
-                result = k4a_device_get_capture(m_device, &capture, 500);
-                if (result == K4A_WAIT_RESULT_SUCCEEDED)
+                result = k4a_device_get_capture(m_device, &capture, CAPTURE_TIMEOUT);
+                if (result == K4A_WAIT_RESULT_SUCCEEDED && is_started_flag)
                 {
                     (*sync_manager->update_device_capture_fptr)(device_info.sync_index, false);
 
@@ -646,9 +578,11 @@ namespace uvgvolucap {
                     // Form the frame
                     std::shared_ptr<Frame> frame = std::make_shared<Frame>( frame_count, 
                                                                             depth_image, 
-                                                                            color_image
+                                                                            color_image,
+                                                                            device_info.pointcloud_config.min_bound,
+                                                                            device_info.pointcloud_config.max_bound
                                                                         );
-                    frame->fragment_pcl = std::make_shared<geometry::PclFragment>();
+                    frame->get_frame_pointcloud() = std::make_shared<geometry::PclFragment>();
 
 #ifdef SETUP_LINE_TIMER
                     auto end_time = std::chrono::high_resolution_clock::now();
@@ -658,27 +592,32 @@ namespace uvgvolucap {
                     std::shared_ptr<geometry::MergeBufferPointCloud> assigned_merge_buffer = sync_manager->m_merge_buffer;
                     auto transf_vp_job = std::make_shared<uvgvolucap::Job>("TransformViewPoint", 0, &Kinect::transform_view_point, this, frame);
                     auto process_frame_job = std::make_shared<uvgvolucap::Job>("ProcessFrame", 1, &Kinect::process_frame, this, frame);
-                    auto pack_fragment_job = std::make_shared<uvgvolucap::Job>("PackFragment", 2, &Kinect::pack_fragment, this, frame->fragment_pcl, assigned_merge_buffer);
+                    auto pack_fragment_job = std::make_shared<uvgvolucap::Job>("PackFragment", 2, &Kinect::pack_fragment, this, frame->get_frame_pointcloud(), assigned_merge_buffer);
 
                     process_frame_job->addDependency(transf_vp_job);
                     pack_fragment_job->addDependency(process_frame_job);
-                    sync_manager->send_job->addDependency(pack_fragment_job);
+                    sync_manager->_job->addDependency(pack_fragment_job);
 
                     thread_queue->submitJob(transf_vp_job);
                     thread_queue->submitJob(process_frame_job);
                     thread_queue->submitJob(pack_fragment_job);
-
-                }
-                else if (result == K4A_WAIT_RESULT_FAILED)
-                {
                     k4a_capture_release(capture);
-                    stop();
-                    Logger::log(LogLevel::ERROR, device_info.serial_number, "Fail to get capture\n");
-                    exit(EXIT_FAILURE);
+                    (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
+                    continue;   
+                }
+                else if (result == K4A_WAIT_RESULT_FAILED && is_started_flag)
+                {
+                    if (is_started_flag)
+                    {
+                        k4a_capture_release(capture);
+                        stop();
+                        Logger::log(LogLevel::ERROR, device_info.serial_number, "Fail to get capture\n");
+                        exit(EXIT_FAILURE);
+                    } else {
+                        break;
+                    }
                 }
 
-                k4a_capture_release(capture);
-                (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
 
 #ifdef SETUP_LINE_TIMER
                 auto end_time = std::chrono::high_resolution_clock::now();
@@ -686,6 +625,7 @@ namespace uvgvolucap {
                 Logger::log(LogLevel::INFO, "Setup for 1 frame", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
 #endif
             }
+            Logger::log(LogLevel::INFO, device_info.serial_number, "Capture thread is stopped\n");
         }
 
         void Kinect::pointcloud_production_line_with_subsapce() {
@@ -706,16 +646,19 @@ namespace uvgvolucap {
             {
                 sync_manager->Cap_permission_cv.wait(lock, [&]()
                 {
-                    return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.sync_index)) != 0;
+                    return (((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.sync_index)) != 0) || !is_started_flag;
                 });
+                
+                // if (!is_started_flag) {
+                //     break;
+                // }
 
 #ifdef SETUP_LINE_TIMER
                 auto start_time = std::chrono::high_resolution_clock::now();
 #endif
-        
                 k4a_capture_t capture;
-                result = k4a_device_get_capture(m_device, &capture, 500);
-                if (result == K4A_WAIT_RESULT_SUCCEEDED)
+                result = k4a_device_get_capture(m_device, &capture, CAPTURE_TIMEOUT);
+                if (result == K4A_WAIT_RESULT_SUCCEEDED && is_started_flag)
                 {
                     (*sync_manager->update_device_capture_fptr)(device_info.sync_index, false);
                     
@@ -726,7 +669,10 @@ namespace uvgvolucap {
                     // Form the frame
                     std::shared_ptr<Frame> frame = std::make_shared<Frame>( frame_count, 
                                                                             depth_image, 
-                                                                            color_image
+                                                                            color_image,
+                                                                            device_info.pointcloud_config.min_bound,
+                                                                            device_info.pointcloud_config.max_bound,
+                                                                            device_info.pointcloud_config.number_of_slices
                                                                         );
 
                     std::shared_ptr<geometry::MergeBufferPointCloud> assigned_merge_buffer = sync_manager->m_merge_buffer;
@@ -734,34 +680,18 @@ namespace uvgvolucap {
                     auto process_frame_job = std::make_shared<uvgvolucap::Job>("ProcessFrame", 1, &Kinect::process_frame_voxel_subspace, this, frame);
                     process_frame_job->addDependency(transf_vp_job);
 
-                    std::vector<std::shared_ptr<uvgvolucap::Job>> voxelization_jobs = std::vector<std::shared_ptr<uvgvolucap::Job>>();
-                    std::vector<std::shared_ptr<uvgvolucap::Job>> subspace_jobs = std::vector<std::shared_ptr<uvgvolucap::Job>>();
-
-                    for (size_t i = 0; i < frame->step; i++) {
-                        std::shared_ptr<geometry::PclFragment> voxelized_pcl = std::make_shared<geometry::PclFragment>();
-                        auto voxelization_job = std::make_shared<uvgvolucap::Job>("Voxelization", 2, &Kinect::voxelization, this, frame->subspace_fragments->at(i), voxelized_pcl);
-                        auto pack_fragment_job = std::make_shared<uvgvolucap::Job>("PackFragment", 3, &Kinect::pack_fragment, this, voxelized_pcl, assigned_merge_buffer); 
-                        
-                        voxelization_job->addDependency(process_frame_job);
-                        pack_fragment_job->addDependency(voxelization_job);
-                        sync_manager->send_job->addDependency(pack_fragment_job);   
-
-                        voxelization_jobs.push_back(voxelization_job);
-                        subspace_jobs.push_back(pack_fragment_job);
+                    for (size_t i = 0; i < frame->get_number_of_slices(); i++) {
+                        sync_manager->m_merge_buffer->slice_components->at(device_info.sync_index)->at(i) = frame->get_subspace_fragments()->at(i);
                     }
 
+                    sync_manager->_job->addDependency(process_frame_job);
                     thread_queue->submitJob(transf_vp_job);
                     thread_queue->submitJob(process_frame_job);
-
-                    for (size_t i = 0; i < frame->step; i++) {
-                        thread_queue->submitJob(voxelization_jobs[i]);
-                    }
-                    
-                    for (size_t i = 0; i < frame->step; i++) {
-                        thread_queue->submitJob(subspace_jobs[i]);
-                    }
+                    k4a_capture_release(capture);
+                    (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
+                    continue;
                 }
-                else if (result == K4A_WAIT_RESULT_FAILED)
+                else if (result == K4A_WAIT_RESULT_FAILED && is_started_flag)
                 {
                     k4a_capture_release(capture);
                     stop();
@@ -769,8 +699,6 @@ namespace uvgvolucap {
                     exit(EXIT_FAILURE);
                 }
 
-                k4a_capture_release(capture);
-                (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
 
 #ifdef SETUP_LINE_TIMER
                 auto end_time = std::chrono::high_resolution_clock::now();
@@ -783,192 +711,8 @@ namespace uvgvolucap {
                 frame_count++;
 #endif
             }
-        }
 
-        void Kinect::pointcloud_production_line_voxelize_with_map() {
-            if (sync_manager == nullptr)
-            {
-                Logger::log(LogLevel::ERROR, device_info.serial_number, "Sync manager is not assigned\n");
-                return;
-            }
-
-            int frame_count = 0;
-            k4a_wait_result_t result = K4A_WAIT_RESULT_TIMEOUT;
-            std::unique_lock<std::mutex> lock(sync_manager->sync_mx);
-
-            warm_up();
-            (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
-
-            while (is_started_flag)
-            {
-                sync_manager->Cap_permission_cv.wait(lock, [&]()
-                {
-                    return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.sync_index)) != 0;
-                });
-                
-#ifdef SETUP_LINE_TIMER
-                auto start_time = std::chrono::high_resolution_clock::now();
-#endif
-                k4a_capture_t capture;
-                result = k4a_device_get_capture(m_device, &capture, 500);
-                if (result == K4A_WAIT_RESULT_SUCCEEDED)
-                {
-                    (*sync_manager->update_device_capture_fptr)(device_info.sync_index, false);
-                    // Capture and process the frames
-                    k4a_image_t depth_image = k4a_capture_get_depth_image(capture);
-                    k4a_image_t color_image = k4a_capture_get_color_image(capture);
-
-                    // Form the frame
-                    std::shared_ptr<Frame> frame = std::make_shared<Frame>( frame_count, 
-                                                                            depth_image, 
-                                                                            color_image
-                                                                        );
-
-#ifdef SETUP_LINE_TIMER
-                    auto end_time = std::chrono::high_resolution_clock::now();
-                    std::chrono::duration<double> elapsed_time = end_time - start_time;
-                    Logger::log(LogLevel::INFO, "Capture", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
-#endif
-                    std::shared_ptr<geometry::MergeBufferPointCloud> assigned_merge_buffer = sync_manager->m_merge_buffer;
-                    auto transf_vp_job = std::make_shared<uvgvolucap::Job>("TransformViewPoint", 0, &Kinect::transform_view_point, this, frame);
-                    auto process_frame_job = std::make_shared<uvgvolucap::Job>("ProcessFrame", 1, &Kinect::process_frame_voxel_unordermap, this, frame);
-                    auto pack_fragment_job = std::make_shared<uvgvolucap::Job>("PackFragment", 2, &Kinect::pack_fragment, this, frame->fragment_pcl, assigned_merge_buffer);
-                    process_frame_job->addDependency(transf_vp_job);
-                    pack_fragment_job->addDependency(process_frame_job);
-                    sync_manager->send_job->addDependency(pack_fragment_job);
-
-                    thread_queue->submitJob(transf_vp_job);
-                    thread_queue->submitJob(process_frame_job);
-                    thread_queue->submitJob(pack_fragment_job);
-                }
-                else if (result == K4A_WAIT_RESULT_FAILED)
-                {
-                    k4a_capture_release(capture);
-                    stop();
-                    Logger::log(LogLevel::ERROR, device_info.serial_number, "Fail to get capture\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                k4a_capture_release(capture);
-                (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
-
-#ifdef SETUP_LINE_TIMER
-                auto end_time = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double> elapsed_time = end_time - start_time;
-                Logger::log(LogLevel::INFO, "Setup for 1 frame", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
-#endif
-            }
-        }
-    
-        void Kinect::release_frame(std::shared_ptr<Frame> frame) {
-            k4a_image_release(frame->depth_image);
-            k4a_image_release(frame->color_image);
-        }
-
-        void Kinect::pointcloud_production_line_with_subsapce_subROI() {
-            if (sync_manager == nullptr)
-            {
-                Logger::log(LogLevel::ERROR, device_info.serial_number, "Sync manager is not assigned\n");
-                return;
-            }
-
-            int frame_count = 0;
-            k4a_wait_result_t result = K4A_WAIT_RESULT_TIMEOUT;
-            std::unique_lock<std::mutex> lock(sync_manager->sync_mx);
-
-            warm_up();
-            (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
-
-            while (is_started_flag)
-            {
-                sync_manager->Cap_permission_cv.wait(lock, [&]()
-                {
-                    return ((*sync_manager->get_num_cap_cam_fptr)() & (1 << device_info.sync_index)) != 0;
-                });
-                
-#ifdef SETUP_LINE_TIMER
-                auto start_time = std::chrono::high_resolution_clock::now();
-#endif
-                k4a_capture_t capture;
-                result = k4a_device_get_capture(m_device, &capture, 500);
-                if (result == K4A_WAIT_RESULT_SUCCEEDED)
-                {
-                    (*sync_manager->update_device_capture_fptr)(device_info.sync_index, false);
-                    // Capture and process the frames
-                    k4a_image_t depth_image = k4a_capture_get_depth_image(capture);
-                    k4a_image_t color_image = k4a_capture_get_color_image(capture);
-
-                    // Form the frame
-                    std::shared_ptr<Frame> frame = std::make_shared<Frame>( frame_count, 
-                                                                            depth_image, 
-                                                                            color_image
-                                                                        );
-
-#ifdef SETUP_LINE_TIMER
-                    auto end_time = std::chrono::high_resolution_clock::now();
-                    std::chrono::duration<double> elapsed_time = end_time - start_time;
-                    Logger::log(LogLevel::INFO, "Capture", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
-#endif
-                    std::shared_ptr<geometry::MergeBufferPointCloud> assigned_merge_buffer = sync_manager->m_merge_buffer;
-                    auto transf_vp_job = std::make_shared<uvgvolucap::Job>("TransformViewPoint", 0, &Kinect::transform_view_point, this, frame);
-
-                    // Process subROI - ROI is divided into 4 subROIs
-                    size_t width_padding = device_info.roi.width / 2;
-                    size_t height_padding = device_info.roi.height / 2;
-                    auto process_frame_job_p1 = std::make_shared<uvgvolucap::Job>("ProcessFrame", 1, &Kinect::process_frame_voxel_subspace_subROI, this, frame, device_info.roi.start_x + width_padding*0, device_info.roi.start_y + height_padding*0, device_info.roi.width / 2, device_info.roi.height / 2);
-                    // auto process_frame_job_p2 = std::make_shared<uvgvolucap::Job>("ProcessFrame", 1, &Kinect::process_frame_voxel_subspace_subROI, this, frame, device_info.roi.start_x + width_padding*0, device_info.roi.start_y + height_padding*1, device_info.roi.width / 2, device_info.roi.height / 2);
-                    // auto process_frame_job_p3 = std::make_shared<uvgvolucap::Job>("ProcessFrame", 1, &Kinect::process_frame_voxel_subspace_subROI, this, frame, device_info.roi.start_x + width_padding*1, device_info.roi.start_y + height_padding*0, device_info.roi.width / 2, device_info.roi.height / 2);
-                    // auto process_frame_job_p4 = std::make_shared<uvgvolucap::Job>("ProcessFrame", 1, &Kinect::process_frame_voxel_subspace_subROI, this, frame, device_info.roi.start_x + width_padding*1, device_info.roi.start_y + height_padding*1, device_info.roi.width / 2, device_info.roi.height / 2);
-
-                    process_frame_job_p1->addDependency(transf_vp_job);
-                    // process_frame_job_p2->addDependency(transf_vp_job);
-                    // process_frame_job_p3->addDependency(transf_vp_job);
-                    // process_frame_job_p4->addDependency(transf_vp_job);
-
-                    auto release_source_job = std::make_shared<uvgvolucap::Job>("ReleaseFrame", 2, &Kinect::release_frame, this, frame);
-
-                    release_source_job->addDependency(process_frame_job_p1);
-                    // release_source_job->addDependency(process_frame_job_p2);
-                    // release_source_job->addDependency(process_frame_job_p3);
-                    // release_source_job->addDependency(process_frame_job_p4);
-
-                    std::vector<std::shared_ptr<uvgvolucap::Job>> subspace_jobs = std::vector<std::shared_ptr<uvgvolucap::Job>>();
-                    for (size_t i = 0; i < 8; i++) {
-                        auto pack_fragment_job = std::make_shared<uvgvolucap::Job>("PackFragment", 3, &Kinect::pack_fragment, this, frame->subspace_fragments->at(i), assigned_merge_buffer); 
-                        pack_fragment_job->addDependency(release_source_job);
-                        sync_manager->send_job->addDependency(pack_fragment_job);   
-                        subspace_jobs.push_back(pack_fragment_job);
-                    }
-
-                    thread_queue->submitJob(transf_vp_job);
-                    thread_queue->submitJob(process_frame_job_p1);
-                    // thread_queue->submitJob(process_frame_job_p2);
-                    // thread_queue->submitJob(process_frame_job_p3);
-                    // thread_queue->submitJob(process_frame_job_p4);
-
-                    thread_queue->submitJob(release_source_job);
-                    
-                    for (size_t i = 0; i < 8; i++) {
-                        thread_queue->submitJob(subspace_jobs[i]);
-                    }
-                }
-                else if (result == K4A_WAIT_RESULT_FAILED)
-                {
-                    k4a_capture_release(capture);
-                    stop();
-                    Logger::log(LogLevel::ERROR, device_info.serial_number, "Fail to get capture\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                k4a_capture_release(capture);
-                (*sync_manager->update_device_ready_fptr)(device_info.sync_index, false);
-
-#ifdef SETUP_LINE_TIMER
-                auto end_time = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double> elapsed_time = end_time - start_time;
-                Logger::log(LogLevel::INFO, "Setup for 1 frame", "Elapsed time: " + std::to_string(elapsed_time.count()) + "s\n");
-#endif
-            }  
+            Logger::log(LogLevel::INFO, device_info.serial_number, "Capture thread is stopped\n");
         }
     } // namespace camera
 }   // namespace uvgvolucap

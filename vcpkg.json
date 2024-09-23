@@ -4,7 +4,6 @@
     "nlohmann-json",
     "azure-kinect-sensor-sdk",
     "glm",
-    "opencv",
-    "skia"
+    "opencv"
   ]
 }

@@ -21,7 +21,8 @@ namespace uvgvolucap {
                 if (config.find(key) == config.end())
                 {
                     Logger::log(LogLevel::ERROR, "INIT", "Config file is missing key: " + key + "\n");
-exit(EXIT_FAILURE);                }
+                    exit(EXIT_FAILURE);                
+                }
             }
 
             if (config["system"]["version"] != "0.1.0")
@@ -136,8 +137,6 @@ exit(EXIT_FAILURE);                }
             switch (mode)
             {
             case 0:
-                return VOXELIZER_MAP;
-            case 1:
                 return VOXELIZER_SUBSPACE;
             default:
                 Logger::log(LogLevel::ERROR, "INIT", "Invalid input voxelizer mode\n");
@@ -145,11 +144,11 @@ exit(EXIT_FAILURE);                }
             }
         }
 
-        bool init_connected_device(std::shared_ptr<std::vector<_kinect_device_ptr>> devices, std::string config_path) {
+        bool init_connected_k4a_device(_kinect_device_ptr_vector k4a_devices, std::string config_path, bool &is_voxelized) {
             nlohmann::json config_params = parse_config(config_path);
 
             uint32_t num_devices = get_numb_connected_devices();               
-            devices->reserve(num_devices);
+            k4a_devices->reserve(num_devices);
 
             Logger::log(LogLevel::INFO, "INIT", "Found " + std::to_string(num_devices) +  " device\n");
             uint32_t register_device = 0;
@@ -160,7 +159,7 @@ exit(EXIT_FAILURE);                }
                 if (config_params["devices_config"].find(serial) != config_params["devices_config"].end())
                 {
                     if (!config_params["devices_config"][serial].at("disabled").get<bool>()) {                
-                        devices->push_back(std::make_shared<Kinect>(i, register_device, serial, config_params));
+                        k4a_devices->push_back(std::make_shared<Kinect>(i, register_device, serial, config_params));
                         register_device++;
                     }
                     else {
@@ -174,25 +173,24 @@ exit(EXIT_FAILURE);                }
                 }
             }
 
-            devices->resize(static_cast<size_t>(register_device));
+            k4a_devices->resize(static_cast<size_t>(register_device));
 
             std::string system_config = std::to_string(config_params["setting"]["fps"].get<int>()) + " fps, "
                                         + std::to_string(config_params["setting"]["color_resolution"].get<int>()) + " color, " 
                                         + std::to_string(config_params["setting"]["depth_resolution"].get<int>()) + " depth";
 
-            if (devices->size() > 0 && devices->size() <= num_devices)
+            if (k4a_devices->size() > 0 && k4a_devices->size() <= num_devices)
             {
                 Logger::log(LogLevel::INFO, "INIT", "System config: "+ system_config +"\n");
 
                 if (!config_params["setting"]["voxelized"].get<bool>()) {
                     Logger::log(LogLevel::INFO, "INIT", "Voxelizer mode: disable\n");
+                    is_voxelized = false;
                 }
                 else{
+                    is_voxelized = true;
                     switch (get_voxelizer_mode(config_params["setting"]["voxelized_mode"].get<int>()))
                     {
-                    case VOXELIZER_MAP:
-                        Logger::log(LogLevel::INFO, "INIT", "Voxelizer mode: mapping\n");
-                        break;
                     case VOXELIZER_SUBSPACE:
                         Logger::log(LogLevel::INFO, "INIT", "Voxelizer mode: subspace\n");
                         break;
@@ -229,8 +227,8 @@ exit(EXIT_FAILURE);                }
             return true;
         }  
 
-        void start_capture(std::shared_ptr<std::vector<_kinect_device_ptr>> devices, std::shared_ptr<ThreadQueue> thread_queue, std::shared_ptr<SyncManager> _sync_manager) {
-            for (auto &device : *devices) {
+        void kinect_start_capture(_kinect_device_ptr_vector k4a_devices, std::shared_ptr<ThreadQueue> thread_queue, std::shared_ptr<SyncManager> _sync_manager) {
+            for (auto &device : *k4a_devices) {
                 device->start_capture(thread_queue, _sync_manager);
             }
         }

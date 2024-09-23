@@ -96,7 +96,7 @@ private:
     std::condition_variable jobAvailable_;
     std::condition_variable jobDone_;
     std::vector<std::thread> threads_;
-    std::array<std::deque<std::shared_ptr<Job>>, 6> jobs_;
+    std::array<std::deque<std::shared_ptr<Job>>, 7> jobs_;
     std::atomic<bool> stop_;
 };
 
