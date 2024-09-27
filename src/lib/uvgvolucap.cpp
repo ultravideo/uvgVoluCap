@@ -336,7 +336,7 @@ namespace uvgvolucap {
 
         void setup_k4a_devices(input_config &config, setup_config &setup_config) {
             setup_config.k4a_devices = std::make_shared<std::vector<uvgvolucap::camera::_kinect_device_ptr>>();
-            bool init_success = camera::init_connected_k4a_device(setup_config.k4a_devices, config.config_path, setup_config.is_voxelized);  
+            bool init_success = camera::utils_k4a::init_connected_k4a_device(setup_config.k4a_devices, config.config_path, setup_config.is_voxelized);  
             if (!init_success) { 
                 Logger::log(LogLevel::ERROR, "uvgVoluCap", "Initialization failed\n");
                 return; 
@@ -351,7 +351,7 @@ namespace uvgvolucap {
             factory.set_zmq_address(config.color_address, config.position_address);
             factory.set_sync_limit(setup_config.k4a_devices->size()); 
             factory.set_voxelization_mode(setup_config.is_voxelized);
-            factory.start_producing(camera::kinect_start_capture, setup_config.k4a_devices);
+            factory.start_producing(camera::utils_k4a::kinect_start_capture, setup_config.k4a_devices);
 
             //Sleep for 2s to allow the device threads to finish
             std::this_thread::sleep_for(std::chrono::seconds(2));

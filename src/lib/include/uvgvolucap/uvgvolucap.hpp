@@ -4,7 +4,7 @@
 
 #include "log.hpp"
 #include "threadqueue.hpp"
-#include "camera/kinect_utilities.hpp"
+#include "camera/camera_utilities.hpp"
 #include "camera/debug_macro.hpp"
 #include <zmq.hpp>
 
