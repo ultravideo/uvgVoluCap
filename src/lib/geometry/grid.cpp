@@ -37,22 +37,10 @@ namespace uvgvolucap {
             }
 
             glm::vec3 Grid::real_to_grid(float real_x, float real_y, float real_z) {
-                // int grid_x = static_cast<int>((real_x - real_world_min_vertic) / node_size);
-                // int grid_y = static_cast<int>((real_y - real_world_min_horiz) / node_size);
-                // int grid_z = static_cast<int>((real_z - real_world_min_vertic) / node_size);
-
-                // Now, the grid coord is match reponstively to the real world
-                // range of x in grid: 0 - max_grid_coord ~ real_world_min_vertic - real_world_max_vertic
-                // range of y in grid: 0 - max_grid_coord ~ real_world_min_horiz - real_world_max_horiz
-                // range of z in grid: 0 - max_grid_coord ~ real_world_min_vertic - real_world_max_vertic
-                // So grid coord is always positive
-                // std::cout << "Real: " << real_x << " " << real_y << " " << real_z << std::endl;
+   
                 int grid_x = static_cast<int>(((real_x - real_world_min_vertic) / real_world_range_vert)* max_vert_grid_coord);
                 int grid_y = static_cast<int>(((real_y - real_world_min_horiz) / real_world_range_honz )* max_honz_grid_coord);
                 int grid_z = static_cast<int>(((real_z - real_world_min_vertic) / real_world_range_vert)* max_vert_grid_coord);
-
-                // std::cout << "Grid: " << grid_x << " " << grid_y << " " << grid_z << std::endl;
-
 
                 return glm::vec3(grid_x, grid_y, grid_z);
             }
