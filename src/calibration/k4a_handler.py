@@ -8,7 +8,7 @@ import pyk4a
 from pyk4a import Config, PyK4A, connected_device_count
 from pyk4a import transformation, depth_image_to_point_cloud, depth_image_to_color_camera
 
-class Grabber:
+class k4a_Grabber:
     def __init__(self):
         self.device_count = connected_device_count()
         if not self.device_count:
@@ -25,7 +25,7 @@ class Grabber:
     def setup_cam(self, device_id):
         self.device = PyK4A(
             Config(
-                color_resolution=pyk4a.ColorResolution.RES_1536P,
+                color_resolution=pyk4a.ColorResolution.RES_2160P,
                 color_format=pyk4a.ImageFormat.COLOR_BGRA32,
                 camera_fps=pyk4a.FPS.FPS_15,
                 depth_mode=pyk4a.DepthMode.NFOV_UNBINNED,
@@ -46,6 +46,9 @@ class Grabber:
         time.sleep(0.5)
         self.device.start()
         time.sleep(2)
+
+        capture = self.device.get_capture()
+        time.sleep(0.5)
 
         while True:
             capture = self.device.get_capture()
@@ -119,7 +122,7 @@ class Grabber:
 
 
 if __name__ == "__main__":
-    grabber = Grabber()
+    grabber = k4a_Grabber()
     device_ids = grabber.get_grabber_list()
     if not device_ids:
         print("No devices available")

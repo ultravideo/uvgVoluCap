@@ -6,7 +6,7 @@ import json
 import pyk4a
 
 from pyk4a import Config, PyK4A
-from Capturn_D2C_Pcl import Grabber
+from calibration.k4a_handler import k4a_Grabber
 # from utils import *
 # from TuningTransformMatrix import TuningTransformMatrix
 
@@ -73,7 +73,7 @@ def save(transform_matrices, ROI_per_device):
             )
             device.open()
             
-            json_template['devices_config'].update({device_id: {
+            json_template['devices_config'].update({device.serial: {
                 'disabled': False, 
                 'ROI': {
                     "start_x": ROI_per_device[serial][0],
@@ -85,7 +85,7 @@ def save(transform_matrices, ROI_per_device):
                 }})
             
             for i in range(0, 16):
-                json_template['devices_config'][serial]['coord_transform'].update({f"{i}": matrix.flatten()[i]})
+                json_template['devices_config'][device.serial]['coord_transform'].update({f"{i}": matrix.flatten()[i]})
 
             device.close()
 
@@ -174,7 +174,7 @@ if __name__ == "__main__":
     ROI_per_device = {}
     transform_matrices = {}
 
-    grabber = Grabber()
+    grabber = k4a_Grabber()
     device_ids = grabber.get_grabber_list()
     if not device_ids:
         print("No devices available")
