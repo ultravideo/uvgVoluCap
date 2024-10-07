@@ -30,6 +30,8 @@ namespace uvgvolucap {
          */
         int get_voxelizer_mode(int mode);
 
+        bool init_connected_devices(_kinect_device_ptr_vector k4a_devices, _realsense_device_ptr_vector rs2_devices, std::string config_path, bool &is_voxelized);
+
         namespace utils_k4a {
             /**
              * @brief Get fps.

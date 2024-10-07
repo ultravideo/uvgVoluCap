@@ -25,7 +25,7 @@ class k4a_Grabber:
     def setup_cam(self, device_id):
         self.device = PyK4A(
             Config(
-                color_resolution=pyk4a.ColorResolution.RES_2160P,
+                color_resolution=pyk4a.ColorResolution.RES_1536P,
                 color_format=pyk4a.ImageFormat.COLOR_BGRA32,
                 camera_fps=pyk4a.FPS.FPS_15,
                 depth_mode=pyk4a.DepthMode.NFOV_UNBINNED,

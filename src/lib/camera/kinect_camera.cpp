@@ -59,29 +59,28 @@ namespace uvgvolucap {
             device_info.index = _index;
             device_info.sync_index = _sync_index;
             device_info.serial_number = _serial;
+            device_info.system_config.color_resolution = _config["setting"]["kinect"]["color_resolution"].get<int>();
+            device_info.system_config.depth_resolution = _config["setting"]["kinect"]["depth_resolution"].get<int>();
+            device_info.system_config.fps              = _config["setting"]["kinect"]["fps"].get<int>();
+            device_info.system_config.depth_to_color   = _config["setting"]["depth_to_color"].get<bool>();
+            device_info.system_config.voxelized        = _config["setting"]["voxelized"].get<bool>();
+            device_info.system_config.voxelized_mode   = _config["setting"]["voxelized_mode"].get<int>();
+            device_info.system_config.subsample_row    = _config["setting"]["subsample_row"].get<int>();
+            device_info.system_config.subsample_col    = _config["setting"]["subsample_col"].get<int>();
 
-            device_info.system_config.color_resolution = _config["setting"]["color_resolution"].get<int>();
-            device_info.system_config.depth_resolution = _config["setting"]["depth_resolution"].get<int>();
-            device_info.system_config.fps = _config["setting"]["fps"].get<int>();
-            device_info.system_config.depth_to_color = _config["setting"]["depth_to_color"].get<bool>();
-            device_info.system_config.voxelized = _config["setting"]["voxelized"].get<bool>();
-            device_info.system_config.voxelized_mode = _config["setting"]["voxelized_mode"].get<int>();
-            device_info.system_config.subsample_row = _config["setting"]["subsample_row"].get<int>();
-            device_info.system_config.subsample_col = _config["setting"]["subsample_col"].get<int>();
+            device_info.filter_config.max_xy           = _config["filter"]["max_xy"].get<float>();
+            device_info.filter_config.min_xy           = _config["filter"]["min_xy"].get<float>();
+            device_info.filter_config.max_z            = _config["filter"]["max_z"].get<float>();
+            device_info.filter_config.min_z            = _config["filter"]["min_z"].get<float>();
 
-            device_info.filter_config.max_xy = _config["filter"]["max_xy"].get<float>();
-            device_info.filter_config.min_xy = _config["filter"]["min_xy"].get<float>();
-            device_info.filter_config.max_z = _config["filter"]["max_z"].get<float>();
-            device_info.filter_config.min_z = _config["filter"]["min_z"].get<float>();
-
-            device_info.pointcloud_config.geometry_precision = static_cast<size_t>(std::pow(2,  _config["grid"]["geometry_precision"] - 1));
-            device_info.pointcloud_config.min_bound[0] = _config["grid"]["min_bound"]["x"].get<int>();
-            device_info.pointcloud_config.min_bound[1] = _config["grid"]["min_bound"]["y"].get<int>();
-            device_info.pointcloud_config.min_bound[2] = _config["grid"]["min_bound"]["z"].get<int>();
-            device_info.pointcloud_config.max_bound[0] = _config["grid"]["max_bound"]["x"].get<int>();
-            device_info.pointcloud_config.max_bound[1] = _config["grid"]["max_bound"]["y"].get<int>();
-            device_info.pointcloud_config.max_bound[2] = _config["grid"]["max_bound"]["z"].get<int>();
-            device_info.pointcloud_config.number_of_slices = _config["grid"]["number_of_slices"].get<int>();
+            device_info.pointcloud_config.geometry_precision    = static_cast<size_t>(std::pow(2,  _config["grid"]["geometry_precision"] - 1));
+            device_info.pointcloud_config.min_bound[0]          = _config["grid"]["min_bound"]["x"].get<int>();
+            device_info.pointcloud_config.min_bound[1]          = _config["grid"]["min_bound"]["y"].get<int>();
+            device_info.pointcloud_config.min_bound[2]          = _config["grid"]["min_bound"]["z"].get<int>();
+            device_info.pointcloud_config.max_bound[0]          = _config["grid"]["max_bound"]["x"].get<int>();
+            device_info.pointcloud_config.max_bound[1]          = _config["grid"]["max_bound"]["y"].get<int>();
+            device_info.pointcloud_config.max_bound[2]          = _config["grid"]["max_bound"]["z"].get<int>();
+            device_info.pointcloud_config.number_of_slices      = _config["grid"]["number_of_slices"].get<int>();
 
             auto device_attribute = _config["devices_config"].find(device_info.serial_number);
             device_info.roi.start_x = device_attribute->at("ROI").at("start_x").get<size_t>();

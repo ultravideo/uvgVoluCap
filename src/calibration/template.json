@@ -4,15 +4,22 @@
         "type": "kinect"
     },
     "setting": {
-        "color_resolution": 1536,
-        "depth_resolution": 576,
-        "fps": 30,
+        "kinect": {
+            "color_resolution": 1536,
+            "depth_resolution": 576,
+            "fps": 30
+        },
+        "realsense": {
+            "color_resolution": 720,
+            "depth_resolution": 720,
+            "fps": 30
+        },
         "depth_to_color": true,
         "max_size": 600000,
         "voxelized": true,
         "voxelized_mode": 0,
-        "subsample_row": 1,
-        "subsample_col": 2
+        "subsample_row": 3,
+        "subsample_col": 3
     },
     "filter": {
         "max_xy": 2.5,

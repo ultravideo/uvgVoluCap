@@ -6,7 +6,8 @@ import json
 import pyk4a
 
 from pyk4a import Config, PyK4A
-from calibration.k4a_handler import k4a_Grabber
+from k4a_handler import k4a_Grabber
+from rs2_handler import rs2_Grabber, rs
 # from utils import *
 # from TuningTransformMatrix import TuningTransformMatrix
 
@@ -56,8 +57,9 @@ def calib(source, target):
     return reg_p2p.transformation 
 
 
-def save(transform_matrices, ROI_per_device):
-        with open('template.json', 'r') as template_file:
+def k4a_save(transform_matrices, ROI_per_device):
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        with open(os.path.join(current_dir + r'\template.json'), 'r') as template_file:
             json_template = json.load(template_file)
 
         for serial, matrix in transform_matrices.items():
@@ -90,10 +92,60 @@ def save(transform_matrices, ROI_per_device):
             device.close()
 
         # Save the updated JSON to a new file
-        with open("cameraconfig.json", 'w') as output_file:
+        print(current_dir + r'\cameraconfig.json')
+        with open(os.path.join(current_dir + r'\cameraconfig.json'), 'w') as output_file:
             json.dump(json_template, output_file, indent=4)
 
         print(f"Camera information added to the JSON template and saved to cameraconfig.json.")
+
+def rs2_save(transform_matrices, ROI_per_device):
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    with open(os.path.join(current_dir + r'\template.json'), 'r') as template_file:
+        json_template = json.load(template_file)
+
+    print(f"Size of transform_matrices: {len(transform_matrices)}")
+
+    for serial, matrix in transform_matrices.items():
+        # ctx = rs.context()
+        # devices = ctx.query_devices()
+        # if device_id >= len(devices):
+        #     print("Index out of range")
+        #     exit()
+        # serial_id = devices[serial].get_info(rs.camera_info.serial_number)
+        # print(f"Serial ID: {serial_id}")
+        # json_template['devices_config'].update({serial_id: {
+        #     'disabled': False, 
+        #     'ROI': {
+        #         "start_x": ROI_per_device[serial][0],
+        #         "start_y": ROI_per_device[serial][1],
+        #         "width": ROI_per_device[serial][2],
+        #         "height": ROI_per_device[serial][3]
+        #     },
+        #     'coord_transform': {}
+        #     }})
+        # for i in range(0, 16):
+        #     json_template['devices_config'][serial_id]['coord_transform'].update({f"{i}": matrix.flatten()[i]})
+
+        print(f"Serial ID: {serial}")
+        json_template['devices_config'].update({serial: {
+            'disabled': False, 
+            'ROI': {
+                "start_x": ROI_per_device[serial][0],
+                "start_y": ROI_per_device[serial][1],
+                "width": ROI_per_device[serial][2],
+                "height": ROI_per_device[serial][3]
+            },
+            'coord_transform': {}
+            }})
+        
+        for i in range(0, 16):
+            json_template['devices_config'][serial]['coord_transform'].update({f"{i}": matrix.flatten()[i]})
+
+    # Save the updated JSON to a new file
+    with open(os.path.join(current_dir + r'\cameraconfig.json'), 'w') as output_file:
+        json.dump(json_template, output_file, indent=4)
+
+    print(f"Camera information added to the JSON template and saved to cameraconfig.json.")
 
 def load_ply_from_folder(folder_path):
     ply_files = [file for file in os.listdir(folder_path) if file.endswith('.ply')]
@@ -170,23 +222,42 @@ def tuning_tranform_matrix(source_l, target_l, transform_matrix):
     return registration_ms_icp.transformation.numpy()
     
 if __name__ == "__main__":
+    # Get current running directory
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+
     pointclouds = {}
     ROI_per_device = {}
     transform_matrices = {}
 
-    grabber = k4a_Grabber()
-    device_ids = grabber.get_grabber_list()
-    if not device_ids:
+    k4a_grabber = k4a_Grabber()
+    k4a_device_ids = k4a_grabber.get_grabber_list()
+
+    rs_grabber = rs2_Grabber()
+    rs_device_ids = rs_grabber.get_grabber_list()
+    if not rs_device_ids and not k4a_device_ids:
         print("No devices available")
         exit()
+
+    for device_id in k4a_device_ids:
+        print(f"Calibrating Kinect device {device_id}")
+        # grabber.setup_cam(device_id)
+        pc = k4a_grabber.capture_point_cloud(device_id)
+        serial = k4a_grabber.get_camera_serial()
+        pointclouds[serial] = pc
+        ROI_per_device[serial] = k4a_grabber.get_ROI()
     
-    for device_id in device_ids:
-        grabber.setup_cam(device_id)
-        pointclouds[device_id] = grabber.capture_point_cloud(device_id)
-        ROI_per_device[device_id] = grabber.get_ROI()
+    for device_id in rs_device_ids:
+        print(f"Calibrating Realsense device {device_id}")
+        # grabber.setup_cam(device_id)
+        pc = rs_grabber.capture_point_cloud(device_id)
+        serial = rs_grabber.get_camera_serial()
+        pointclouds[serial] = pc
+        ROI_per_device[serial] = rs_grabber.get_ROI()
+    
+    print(f"Size of pointclouds: {len(pointclouds)}")
 
     transform_matrices = {}
-    origin = o3d.io.read_point_cloud("origin.ply")
+    origin = o3d.io.read_point_cloud(os.path.join(current_dir, "origin.ply"))
     picked_id_target = pick_points(origin)
 
     first_key, first_pc = next(iter(pointclouds.items()))
@@ -195,8 +266,12 @@ if __name__ == "__main__":
     first_pc = first_pc.transform(maxtrix)
     picked_id_target = pick_points(first_pc)
 
+    # Print size of pointclouds
+
     if first_key in pointclouds:
         del pointclouds[first_key]
+
+    print(f"Size of pointclouds: {len(pointclouds)}")
 
     for device_id, pointcloud in pointclouds.items():
         maxtrix = calib(pointcloud, first_pc)
@@ -235,4 +310,5 @@ if __name__ == "__main__":
     vis.run()  # user picks points
     vis.destroy_window()
 
-    save(transform_matrices, ROI_per_device)
+    # k4a_save(transform_matrices, ROI_per_device)
+    rs2_save(transform_matrices, ROI_per_device)

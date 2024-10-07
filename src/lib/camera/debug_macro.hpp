@@ -14,6 +14,6 @@
 // #define SETUP_LINE_TIMER
 
 #define FPS_MEASURE
-#define RUNNINT_TIME 5.0
+#define RUNNINT_TIME 30.0
 
 #endif // DEBUG_MACRO_HPP
