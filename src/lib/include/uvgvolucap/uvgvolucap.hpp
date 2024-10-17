@@ -4,7 +4,7 @@
 
 #include "log.hpp"
 #include "threadqueue.hpp"
-#include "camera/kinect_utilities.hpp"
+#include "camera/camera_utilities.hpp"
 #include "camera/debug_macro.hpp"
 #include <zmq.hpp>
 
@@ -12,11 +12,6 @@
 
 namespace uvgvolucap {
     namespace API {
-        enum CameraType {
-            KINECT,
-            REALSENSE
-        };
-
         class PointCloudFactory {
         private:
             std::shared_ptr<uvgvolucap::ThreadQueue> thread_queue = std::make_shared<uvgvolucap::ThreadQueue>(40);
@@ -109,8 +104,8 @@ namespace uvgvolucap {
             int get_num_cap_cam();
 
             /**
-             * @brief Start producing.
-             * @details This function is used to start producing the point cloud.
+             * @brief Binding camera to factory.
+             * @details This function is used to bind the input camera/sensor to the factory for producing the point cloud.
              * 
              * @tparam Func The function.
              * @tparam Args The arguments.
@@ -118,7 +113,7 @@ namespace uvgvolucap {
              * @param args The arguments.
              */
             template <typename Func, typename... Args>
-            void start_producing(Func&& func, Args&&... args);
+            void binding_camera2factory(Func&& func, Args&&... args);
 
             /**
              * @brief Get the sync manager.
@@ -127,6 +122,8 @@ namespace uvgvolucap {
              * @return std::shared_ptr<camera::SyncManager> The sync manager.
              */
             std::shared_ptr<camera::SyncManager> get_sync_manager();
+
+            void run();
         
         private:
             /**
@@ -166,6 +163,7 @@ namespace uvgvolucap {
          */
         struct setup_config {
             std::shared_ptr<std::vector<uvgvolucap::camera::_kinect_device_ptr>> k4a_devices = nullptr;
+            std::shared_ptr<std::vector<uvgvolucap::camera::_realsense_device_ptr>> rs2_devices = nullptr;
             bool is_voxelized = false;
         };
 
@@ -187,6 +185,14 @@ namespace uvgvolucap {
          * @param position_address The position address.
          */
         void k4a_run(input_config &config, setup_config &setup_config);
+
+
+        void setup_rs2_devices(input_config &config, setup_config &setup_config);
+        void rs2_run(input_config &config, setup_config &setup_config);
+
+
+        void setup_all_types_devices(input_config &config, setup_config &setup_config);
+        void all_types_run(input_config &config, setup_config &setup_config);
     }
 }
 

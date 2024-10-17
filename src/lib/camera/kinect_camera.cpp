@@ -1,17 +1,12 @@
 #include "kinect_camera.hpp"
-#include "kinect_utilities.hpp"
-#include "opencv2/opencv.hpp"
+#include "camera_utilities.hpp"
 
 namespace uvgvolucap {
     namespace camera{
-        Frame::Frame(int _id, k4a_image_t depth_, k4a_image_t color_, int min_bound_[3], int max_bound_[3], int number_of_slices_)
-            :   id(_id), 
+        Kinect_Frame::Kinect_Frame(int _id, k4a_image_t depth_, k4a_image_t color_, int min_bound_[3], int max_bound_[3], int number_of_slices_)
+            :   BasedFrame(_id, min_bound_, max_bound_, number_of_slices_),
                 depth_image(depth_), 
-                color_image(color_), 
-                min_bound{min_bound_[0], min_bound_[1], min_bound_[2]}, 
-                max_bound{max_bound_[0], max_bound_[1], max_bound_[2]}, 
-                number_of_slices(number_of_slices_) {
-
+                color_image(color_) {
             for (int i = 0; i < number_of_slices; i++)
             {
                 std::shared_ptr<geometry::PclFragment> subspace_slice = std::make_shared<geometry::PclFragment>();
@@ -21,57 +16,20 @@ namespace uvgvolucap {
             }
         }
 
-        int Frame::get_number_of_slices() {
-            return number_of_slices;
-        }
-
-        int Frame::get_max_bound(int index) {
-            return max_bound[index];
-        }
-
-        int Frame::get_min_bound(int index) {
-            return min_bound[index];
-        }
-
-        k4a_image_t Frame::get_depth_image() {
+        k4a_image_t Kinect_Frame::get_depth_image() {
             return depth_image;
         }
 
-        k4a_image_t Frame::get_color_image() {
+        k4a_image_t Kinect_Frame::get_color_image() {
             return color_image;
         }
 
-        geometry::_slice_fragments_ptr Frame::get_subspace_fragments() {
-            return subspace_fragments;
-        }
-
-        std::shared_ptr<geometry::PclFragment> Frame::get_frame_pointcloud() {
-            return fragment_pcl;
-        }
-
-        void Frame::set_depth_image(k4a_image_t depth_) {
+        void Kinect_Frame::set_depth_image(k4a_image_t depth_) {
             depth_image = depth_;
         }
 
-        void Frame::set_color_image(k4a_image_t color_) {
+        void Kinect_Frame::set_color_image(k4a_image_t color_) {
             color_image = color_;
-        }
-
-
-        void Frame::set_min_bound(int x, int y, int z) {
-            min_bound[0] = x;
-            min_bound[1] = y;
-            min_bound[2] = z;
-        }
-
-        void Frame::set_max_bound(int x, int y, int z) {
-            max_bound[0] = x;
-            max_bound[1] = y;
-            max_bound[2] = z;
-        }
-
-        void Frame::set_number_of_slices(int num) {
-            number_of_slices = num;
         }
 
         /* ############################################################################################## */    
@@ -101,29 +59,28 @@ namespace uvgvolucap {
             device_info.index = _index;
             device_info.sync_index = _sync_index;
             device_info.serial_number = _serial;
+            device_info.system_config.color_resolution = _config["setting"]["kinect"]["color_resolution"].get<int>();
+            device_info.system_config.depth_resolution = _config["setting"]["kinect"]["depth_resolution"].get<int>();
+            device_info.system_config.fps              = _config["setting"]["kinect"]["fps"].get<int>();
+            device_info.system_config.depth_to_color   = _config["setting"]["depth_to_color"].get<bool>();
+            device_info.system_config.voxelized        = _config["setting"]["voxelized"].get<bool>();
+            device_info.system_config.voxelized_mode   = _config["setting"]["voxelized_mode"].get<int>();
+            device_info.system_config.subsample_row    = _config["setting"]["subsample_row"].get<int>();
+            device_info.system_config.subsample_col    = _config["setting"]["subsample_col"].get<int>();
 
-            device_info.system_config.color_resolution = _config["setting"]["color_resolution"].get<int>();
-            device_info.system_config.depth_resolution = _config["setting"]["depth_resolution"].get<int>();
-            device_info.system_config.fps = _config["setting"]["fps"].get<int>();
-            device_info.system_config.depth_to_color = _config["setting"]["depth_to_color"].get<bool>();
-            device_info.system_config.voxelized = _config["setting"]["voxelized"].get<bool>();
-            device_info.system_config.voxelized_mode = _config["setting"]["voxelized_mode"].get<int>();
-            device_info.system_config.subsample_row = _config["setting"]["subsample_row"].get<int>();
-            device_info.system_config.subsample_col = _config["setting"]["subsample_col"].get<int>();
+            device_info.filter_config.max_xy           = _config["filter"]["max_xy"].get<float>();
+            device_info.filter_config.min_xy           = _config["filter"]["min_xy"].get<float>();
+            device_info.filter_config.max_z            = _config["filter"]["max_z"].get<float>();
+            device_info.filter_config.min_z            = _config["filter"]["min_z"].get<float>();
 
-            device_info.filter_config.max_xy = _config["filter"]["max_xy"].get<float>();
-            device_info.filter_config.min_xy = _config["filter"]["min_xy"].get<float>();
-            device_info.filter_config.max_z = _config["filter"]["max_z"].get<float>();
-            device_info.filter_config.min_z = _config["filter"]["min_z"].get<float>();
-
-            device_info.pointcloud_config.geometry_precision = static_cast<size_t>(std::pow(2,  _config["grid"]["geometry_precision"] - 1));
-            device_info.pointcloud_config.min_bound[0] = _config["grid"]["min_bound"]["x"].get<int>();
-            device_info.pointcloud_config.min_bound[1] = _config["grid"]["min_bound"]["y"].get<int>();
-            device_info.pointcloud_config.min_bound[2] = _config["grid"]["min_bound"]["z"].get<int>();
-            device_info.pointcloud_config.max_bound[0] = _config["grid"]["max_bound"]["x"].get<int>();
-            device_info.pointcloud_config.max_bound[1] = _config["grid"]["max_bound"]["y"].get<int>();
-            device_info.pointcloud_config.max_bound[2] = _config["grid"]["max_bound"]["z"].get<int>();
-            device_info.pointcloud_config.number_of_slices = _config["grid"]["number_of_slices"].get<int>();
+            device_info.pointcloud_config.geometry_precision    = static_cast<size_t>(std::pow(2,  _config["grid"]["geometry_precision"] - 1));
+            device_info.pointcloud_config.min_bound[0]          = _config["grid"]["min_bound"]["x"].get<int>();
+            device_info.pointcloud_config.min_bound[1]          = _config["grid"]["min_bound"]["y"].get<int>();
+            device_info.pointcloud_config.min_bound[2]          = _config["grid"]["min_bound"]["z"].get<int>();
+            device_info.pointcloud_config.max_bound[0]          = _config["grid"]["max_bound"]["x"].get<int>();
+            device_info.pointcloud_config.max_bound[1]          = _config["grid"]["max_bound"]["y"].get<int>();
+            device_info.pointcloud_config.max_bound[2]          = _config["grid"]["max_bound"]["z"].get<int>();
+            device_info.pointcloud_config.number_of_slices      = _config["grid"]["number_of_slices"].get<int>();
 
             auto device_attribute = _config["devices_config"].find(device_info.serial_number);
             device_info.roi.start_x = device_attribute->at("ROI").at("start_x").get<size_t>();
@@ -140,9 +97,9 @@ namespace uvgvolucap {
         void Kinect::setup_device_config()
         {
             m_config.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32;
-            m_config.color_resolution = get_color_resolution(device_info.system_config.color_resolution);
-            m_config.depth_mode = get_depth_mode(device_info.system_config.depth_resolution);
-            m_config.camera_fps = get_fps(device_info.system_config.fps);
+            m_config.color_resolution = utils_k4a::get_k4a_color_resolution(device_info.system_config.color_resolution);
+            m_config.depth_mode = utils_k4a::get_k4a_depth_mode(device_info.system_config.depth_resolution);
+            m_config.camera_fps = utils_k4a::get_fps(device_info.system_config.fps);
             m_config.synchronized_images_only = true; // ensures that depth and color images are both available in the capture
             m_config.wired_sync_mode = K4A_WIRED_SYNC_MODE_STANDALONE;
         }
@@ -345,7 +302,7 @@ namespace uvgvolucap {
             capture_thread_ptr = std::make_shared<std::thread>(capture_function);
         }
 
-        void Kinect::transform_view_point(std::shared_ptr<Frame> frame) {
+        void Kinect::transform_view_point(std::shared_ptr<Kinect_Frame> frame) {
 #ifdef TRANSFORM_VIEWPOINT_TIMER
             auto start_time = std::chrono::high_resolution_clock::now();
 #endif
@@ -407,7 +364,7 @@ namespace uvgvolucap {
 #endif
         }
 
-        void Kinect::process_frame(std::shared_ptr<Frame> frame) {
+        void Kinect::process_frame(std::shared_ptr<Kinect_Frame> frame) {
 #ifdef PROCESSING_TIMER
             auto start_time = std::chrono::high_resolution_clock::now();
 #endif
@@ -459,7 +416,7 @@ namespace uvgvolucap {
 #endif
         }
 
-        void Kinect::process_frame_voxel_subspace(std::shared_ptr<Frame> frame) {
+        void Kinect::process_frame_voxel_subspace(std::shared_ptr<Kinect_Frame> frame) {
 #ifdef PROCESSING_TIMER
             auto start_time = std::chrono::high_resolution_clock::now();
 #endif
@@ -576,7 +533,7 @@ namespace uvgvolucap {
                     k4a_image_t color_image = k4a_capture_get_color_image(capture);
 
                     // Form the frame
-                    std::shared_ptr<Frame> frame = std::make_shared<Frame>( frame_count, 
+                    std::shared_ptr<Kinect_Frame> frame = std::make_shared<Kinect_Frame>( frame_count, 
                                                                             depth_image, 
                                                                             color_image,
                                                                             device_info.pointcloud_config.min_bound,
@@ -667,7 +624,7 @@ namespace uvgvolucap {
                     k4a_image_t color_image = k4a_capture_get_color_image(capture);
 
                     // Form the frame
-                    std::shared_ptr<Frame> frame = std::make_shared<Frame>( frame_count, 
+                    std::shared_ptr<Kinect_Frame> frame = std::make_shared<Kinect_Frame>( frame_count, 
                                                                             depth_image, 
                                                                             color_image,
                                                                             device_info.pointcloud_config.min_bound,

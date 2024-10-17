@@ -31,6 +31,7 @@ namespace uvgvolucap {
         }
 
         void PointCloudFactory::voxelize_data(std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer, int slice_index) {
+
             std::shared_ptr<geometry::PclFragment> subspace_slice = std::make_shared<geometry::PclFragment>();
             
             for (size_t i = 0; i < m_merge_buffer->slice_components->size(); i++) {
@@ -317,9 +318,16 @@ namespace uvgvolucap {
         }
 
         template <typename Func, typename... Args>
-        void PointCloudFactory::start_producing(Func&& func, Args&&... args) {
+        void PointCloudFactory::binding_camera2factory(Func&& func, Args&&... args) {
             std::function<void()> f = std::bind(std::forward<Func>(func), std::forward<Args>(args)..., thread_queue, sync_manager_handler);
             f();
+        }
+
+        void PointCloudFactory::set_voxelization_mode(bool mode) {
+            is_voxelize_mode = mode;
+        }
+
+        void PointCloudFactory::run() {
             if (is_voxelize_mode) {
                 execute_sync_with_voxelize();
             }
@@ -328,18 +336,14 @@ namespace uvgvolucap {
             }
         }
 
-        void PointCloudFactory::set_voxelization_mode(bool mode) {
-            is_voxelize_mode = mode;
-        }
-
         /* ###################################################### */
 
         void setup_k4a_devices(input_config &config, setup_config &setup_config) {
             setup_config.k4a_devices = std::make_shared<std::vector<uvgvolucap::camera::_kinect_device_ptr>>();
-            bool init_success = camera::init_connected_k4a_device(setup_config.k4a_devices, config.config_path, setup_config.is_voxelized);  
+            bool init_success = camera::utils_k4a::init_connected_k4a_device(setup_config.k4a_devices, config.config_path, setup_config.is_voxelized);  
             if (!init_success) { 
                 Logger::log(LogLevel::ERROR, "uvgVoluCap", "Initialization failed\n");
-                return; 
+                exit(EXIT_FAILURE);
             } else {
                 Logger::log(LogLevel::INFO, "uvgVoluCap", "Initialization success\n");
             }
@@ -351,10 +355,80 @@ namespace uvgvolucap {
             factory.set_zmq_address(config.color_address, config.position_address);
             factory.set_sync_limit(setup_config.k4a_devices->size()); 
             factory.set_voxelization_mode(setup_config.is_voxelized);
-            factory.start_producing(camera::kinect_start_capture, setup_config.k4a_devices);
+            factory.binding_camera2factory(camera::utils_k4a::kinect_start_capture, setup_config.k4a_devices);
+            factory.run();
 
             //Sleep for 2s to allow the device threads to finish
             std::this_thread::sleep_for(std::chrono::seconds(2));
+
+            for (auto& kdevice : *setup_config.k4a_devices) {
+                kdevice->stop();
+            }
+
+            Logger::log(LogLevel::INFO, "APP", "CAPTURE FINISHED\n");
+        }
+
+        /* ###################################################### */
+        void setup_rs2_devices(input_config &config, setup_config &setup_config) {
+            setup_config.rs2_devices = std::make_shared<std::vector<uvgvolucap::camera::_realsense_device_ptr>>();
+            bool init_success = camera::utils_rs2::init_connected_rs2_device(setup_config.rs2_devices, config.config_path, setup_config.is_voxelized);  
+            if (!init_success) { 
+                Logger::log(LogLevel::ERROR, "uvgVoluCap", "Initialization failed\n");
+                exit(EXIT_FAILURE);
+            } else {
+                Logger::log(LogLevel::INFO, "uvgVoluCap", "Initialization success\n");
+            }
+        }
+
+        void rs2_run(input_config &config, setup_config &setup_config) {
+            API::PointCloudFactory factory;
+            factory.set_zmq_address(config.color_address, config.position_address);
+            factory.set_sync_limit(setup_config.rs2_devices->size()); 
+            factory.set_voxelization_mode(setup_config.is_voxelized);
+            factory.binding_camera2factory(camera::utils_rs2::realsense_start_capture, setup_config.rs2_devices);
+            factory.run();
+
+            //Sleep for 2s to allow the device threads to finish
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+
+            for (auto& rs2device : *setup_config.rs2_devices) {
+                rs2device->stop();
+            }
+
+            Logger::log(LogLevel::INFO, "APP", "CAPTURE FINISHED\n");
+        }
+
+
+        /* ###################################################### */
+        void setup_all_types_devices(input_config &config, setup_config &setup_config) {
+            setup_config.k4a_devices = std::make_shared<std::vector<uvgvolucap::camera::_kinect_device_ptr>>();
+            setup_config.rs2_devices = std::make_shared<std::vector<uvgvolucap::camera::_realsense_device_ptr>>();
+
+            bool init_success = camera::init_connected_devices(setup_config.k4a_devices, setup_config.rs2_devices, config.config_path, setup_config.is_voxelized);
+            if (!init_success) { 
+                Logger::log(LogLevel::ERROR, "uvgVoluCap", "Initialization failed\n");
+                exit(EXIT_FAILURE);
+            } else {
+                Logger::log(LogLevel::INFO, "uvgVoluCap", "Initialization success\n");
+            }
+        }
+
+        
+        void all_types_run(input_config &config, setup_config &setup_config) {
+            API::PointCloudFactory factory;
+            factory.set_zmq_address(config.color_address, config.position_address);
+            factory.set_sync_limit(setup_config.rs2_devices->size() + setup_config.k4a_devices->size());
+            factory.set_voxelization_mode(setup_config.is_voxelized);
+            factory.binding_camera2factory(camera::utils_rs2::realsense_start_capture, setup_config.rs2_devices);
+            factory.binding_camera2factory(camera::utils_k4a::kinect_start_capture, setup_config.k4a_devices);
+            factory.run();
+
+            //Sleep for 2s to allow the device threads to finish
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+
+            for (auto& rs2device : *setup_config.rs2_devices) {
+                rs2device->stop();
+            }
 
             for (auto& kdevice : *setup_config.k4a_devices) {
                 kdevice->stop();

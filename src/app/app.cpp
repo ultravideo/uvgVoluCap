@@ -27,8 +27,14 @@ int main(int argc, char* argv[]) {
     }
     
     uvgvolucap::API::setup_config setup_config;
-    uvgvolucap::API::setup_k4a_devices(config, setup_config);
-    uvgvolucap::API::k4a_run(config, setup_config);
+    // uvgvolucap::API::setup_k4a_devices(config, setup_config);
+    // uvgvolucap::API::k4a_run(config, setup_config);
+
+    // uvgvolucap::API::setup_rs2_devices(config, setup_config);
+    // uvgvolucap::API::rs2_run(config, setup_config);
+
+    uvgvolucap::API::setup_all_types_devices(config, setup_config);
+    uvgvolucap::API::all_types_run(config, setup_config);
 
     return 0;
 }

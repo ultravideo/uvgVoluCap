@@ -3,3 +3,6 @@ _*
 
 build/
 bin/
+
+**/*.pyd
+**/__pycache__/*

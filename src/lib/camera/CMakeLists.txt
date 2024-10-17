@@ -2,13 +2,21 @@ message(DEBUG "./src/lib/camera/cmake")
 
 # Define the library
 add_library(cameraLibrary STATIC
+    based_camera.cpp
     kinect_camera.cpp
-    kinect_utilities.cpp
+    realsense_camera.cpp
+    camera_utilities.cpp
 )
 
 find_package(nlohmann_json 3.11.3 REQUIRED)
 find_package(k4a CONFIG REQUIRED)
-target_link_libraries(cameraLibrary PRIVATE k4a::k4a nlohmann_json::nlohmann_json)
+find_package(realsense2 CONFIG REQUIRED)
+target_link_libraries(cameraLibrary PRIVATE k4a::k4a 
+                                            nlohmann_json::nlohmann_json
+                                            realsense2::fw 
+                                            realsense2::rsutils 
+                                            realsense2::realsense2 
+                                            realsense2::realsense-file)
 
 
 # Include directories for headers
