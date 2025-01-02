@@ -30,6 +30,10 @@ namespace uvgvolucap {
             }
         }
 
+        void PointCloudFactory::set_running_time(int time) {
+            running_time = time;
+        }
+
         void PointCloudFactory::voxelize_data(std::shared_ptr<geometry::MergeBufferPointCloud> m_merge_buffer, int slice_index) {
 
             std::shared_ptr<geometry::PclFragment> subspace_slice = std::make_shared<geometry::PclFragment>();
@@ -107,7 +111,7 @@ namespace uvgvolucap {
 #ifdef FPS_MEASURE
                 auto end_time = std::chrono::high_resolution_clock::now();
                 elapsed_time = end_time - start_time;
-                if (elapsed_time.count() > RUNNINT_TIME && !stop_flag)
+                if (elapsed_time.count() > running_time && !stop_flag)
                 {
                     stop_flag = true;
                     break;
@@ -220,7 +224,7 @@ namespace uvgvolucap {
 #ifdef FPS_MEASURE
                 auto end_time = std::chrono::high_resolution_clock::now();
                 elapsed_time = end_time - start_time;
-                if (elapsed_time.count() > RUNNINT_TIME)
+                if (elapsed_time.count() > running_time)
                 {
                     stop_flag = true;
                 }
@@ -353,6 +357,7 @@ namespace uvgvolucap {
         void k4a_run(input_config &config, setup_config &setup_config) {
             API::PointCloudFactory factory;
             factory.set_zmq_address(config.color_address, config.position_address);
+            factory.set_running_time(config.running_time);
             factory.set_sync_limit(setup_config.k4a_devices->size()); 
             factory.set_voxelization_mode(setup_config.is_voxelized);
             factory.binding_camera2factory(camera::utils_k4a::kinect_start_capture, setup_config.k4a_devices);
@@ -383,6 +388,7 @@ namespace uvgvolucap {
         void rs2_run(input_config &config, setup_config &setup_config) {
             API::PointCloudFactory factory;
             factory.set_zmq_address(config.color_address, config.position_address);
+            factory.set_running_time(config.running_time);
             factory.set_sync_limit(setup_config.rs2_devices->size()); 
             factory.set_voxelization_mode(setup_config.is_voxelized);
             factory.binding_camera2factory(camera::utils_rs2::realsense_start_capture, setup_config.rs2_devices);
@@ -417,6 +423,7 @@ namespace uvgvolucap {
         void all_types_run(input_config &config, setup_config &setup_config) {
             API::PointCloudFactory factory;
             factory.set_zmq_address(config.color_address, config.position_address);
+            factory.set_running_time(config.running_time);
             factory.set_sync_limit(setup_config.rs2_devices->size() + setup_config.k4a_devices->size());
             factory.set_voxelization_mode(setup_config.is_voxelized);
             factory.binding_camera2factory(camera::utils_rs2::realsense_start_capture, setup_config.rs2_devices);

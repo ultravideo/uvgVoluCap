@@ -6,3 +6,4 @@ bin/
 
 **/*.pyd
 **/__pycache__/*
+**/uvgvolucap/*

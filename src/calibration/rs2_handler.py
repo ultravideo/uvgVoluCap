@@ -1,5 +1,5 @@
-import pyrealsense2 as rs
 import open3d as o3d
+import pyrealsense2 as rs
 import numpy as np
 import time
 
@@ -16,7 +16,7 @@ class rs2_Grabber:
         print(f"Number of connected devices: {self.device_count}")
         if not self.device_count:
             print("No devices available")
-            exit()
+
         self.ctx = rs.context()
         self.device_ids = list(range(self.device_count))
         self.config = rs.config()

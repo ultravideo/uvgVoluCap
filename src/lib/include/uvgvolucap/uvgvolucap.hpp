@@ -30,6 +30,7 @@ namespace uvgvolucap {
             std::string disconnet_msg = "DISCONNECT";
             std::string color_address = "";
             std::string position_address = "";
+            int running_time = 30; // seconds
 
         public:
             PointCloudFactory();
@@ -86,6 +87,14 @@ namespace uvgvolucap {
              * @param i_position_address The position address.
              */
             void set_zmq_address(std::string i_color_address, std::string i_position_address);
+
+            /**
+             * @brief Set running time.
+             * @details This function is used to set the running time for the point cloud factory.
+             * 
+             * @param time The running time.
+             */
+            void set_running_time(int time);
 
             /**
              * @brief Get the number of ready cameras.
@@ -155,6 +164,7 @@ namespace uvgvolucap {
             std::string config_path;
             std::string color_address;
             std::string position_address;
+            int running_time = 30;
         };
 
         /**

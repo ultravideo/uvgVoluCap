@@ -13,7 +13,7 @@ class k4a_Grabber:
         self.device_count = connected_device_count()
         if not self.device_count:
             print("No devices available")
-            exit()
+            # exit()
         print(f"Connected devices: {self.device_count}")
         self.device_ids = list(range(self.device_count))
         self.device = None
