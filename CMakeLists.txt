@@ -39,6 +39,7 @@ endif()
 # Run subdirectory make files
 add_subdirectory(src/lib)
 add_subdirectory(src/app)
+add_subdirectory(plyxporter)
 # add_subdirectory(examples)
 
 # Custom target to apply formating to all source file
@@ -110,4 +111,6 @@ message(STATUS "INSTALL_CONFIG_DIR: ${INSTALL_CONFIG_DIR}")
 
 install(DIRECTORY ${CMAKE_BINARY_DIR}/src/app/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
 install(DIRECTORY ${CMAKE_BINARY_DIR}/src/lib/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(DIRECTORY ${CMAKE_BINARY_DIR}/plyxporter/src/app/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(DIRECTORY ${CMAKE_BINARY_DIR}/plyxporter/src/lib/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/asset DESTINATION ${CMAKE_INSTALL_PREFIX})
