@@ -44,7 +44,7 @@ add_subdirectory(plyxporter)
 
 # Custom target to apply formating to all source file
 # todo : check if user has the package : sudo apt-get install clang-format
-add_custom_target(format
+add_custom_target(mainformat
   find
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     -type f
@@ -89,7 +89,7 @@ add_custom_target(format
 # Define installation destinations
 set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/build/bin" CACHE PATH "Install path prefix" FORCE)
 
-add_custom_target(PrintConfig ALL
+add_custom_target(MainPrintConfig ALL
     COMMAND ${CMAKE_COMMAND} -E echo "Build configuration: $<CONFIG>"
 )
 
