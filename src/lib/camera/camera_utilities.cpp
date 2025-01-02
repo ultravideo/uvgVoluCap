@@ -183,7 +183,7 @@ namespace uvgvolucap {
 
                 if (k4a_devices->size() > 0 && k4a_devices->size() <= num_devices)
                 {
-                    Logger::log(LogLevel::INFO, "INIT", "System config: "+ system_config +"\n");
+                    Logger::log(LogLevel::INFO, "INIT", "Kinect config: "+ system_config +"\n");
 
                     if (!config_params["setting"]["voxelized"].get<bool>()) {
                         Logger::log(LogLevel::INFO, "INIT", "Voxelizer mode: disable\n");
@@ -394,7 +394,7 @@ namespace uvgvolucap {
                
                 if (rs2_devices->size() > 0 && rs2_devices->size() <= num_devices)
                 {
-                    Logger::log(LogLevel::INFO, "INIT", "System config: "+ system_config +"\n");
+                    Logger::log(LogLevel::INFO, "INIT", "Realsense2 config: "+ system_config +"\n");
 
                     if (!config_params["setting"]["voxelized"].get<bool>()) {
                         Logger::log(LogLevel::INFO, "INIT", "Voxelizer mode: disable\n");
@@ -508,58 +508,61 @@ namespace uvgvolucap {
                 }
             }
 
-            std::string system_config = std::to_string(config_params["setting"]["realsense"]["fps"].get<int>()) + " fps, "
+            std::string rs2_config_txt = std::to_string(config_params["setting"]["realsense"]["fps"].get<int>()) + " fps, "
                                             + std::to_string(config_params["setting"]["realsense"]["color_resolution"].get<int>()) + " color, " 
                                             + std::to_string(config_params["setting"]["realsense"]["depth_resolution"].get<int>()) + " depth";
+
+            std::string k4a_config_txt = std::to_string(config_params["setting"]["kinect"]["fps"].get<int>()) + " fps, "
+                                            + std::to_string(config_params["setting"]["kinect"]["color_resolution"].get<int>()) + " color, " 
+                                            + std::to_string(config_params["setting"]["kinect"]["depth_resolution"].get<int>()) + " depth";
                
-                if ((rs2_devices->size() > 0 && rs2_devices->size() <= num_rs2_devices) || (k4a_devices->size() > 0 && k4a_devices->size() <= num_k4a_devices))
-                {
-                    Logger::log(LogLevel::INFO, "INIT", "System config: "+ system_config +"\n");
+            if ((rs2_devices->size() > 0 && rs2_devices->size() <= num_rs2_devices) || (k4a_devices->size() > 0 && k4a_devices->size() <= num_k4a_devices))
+            {
+                Logger::log(LogLevel::INFO, "INIT", "Realsense2 config: "+ rs2_config_txt +"\n");
+                Logger::log(LogLevel::INFO, "INIT", "Kinect config: "+ k4a_config_txt +"\n");
 
-                    if (!config_params["setting"]["voxelized"].get<bool>()) {
-                        Logger::log(LogLevel::INFO, "INIT", "Voxelizer mode: disabled\n");
-                        is_voxelized = false;
-                    }
-                    else{
-                        is_voxelized = true;
-                        switch (get_voxelizer_mode(config_params["setting"]["voxelized_mode"].get<int>()))
-                        {
-                        case VOXELIZER_SUBSPACE:
-                            Logger::log(LogLevel::INFO, "INIT", "Voxelizer mode: subspace\n");
-                            break;
-                        
-                        default:
-                            Logger::log(LogLevel::ERROR, "INIT", "Invalid voxelizer mode\n");
-                            exit(EXIT_FAILURE);
-                            break;
-                        } 
-                    }
-
-                    if (config_params["setting"]["subsample_row"].get<int>() <= 0 || config_params["setting"]["subsample_col"].get<int>() <= 0){ 
-                        Logger::log(LogLevel::ERROR, "INIT", "Subsample value must be greater than 0\n");
-                    }
-                    else {
-                        Logger::log(LogLevel::INFO, "INIT", "Subsampling setup {row,col} : {" + std::to_string(config_params["setting"]["subsample_row"].get<int>()) 
-                                                                                        + "," + std::to_string(config_params["setting"]["subsample_col"].get<int>())
-                                                                                                + "}\n");
-                        
-                    }
-
-                    if(config_params["setting"]["depth_to_color"].get<bool>()) {
-                        Logger::log(LogLevel::INFO, "INIT", "Depth to color mode is enabled\n");
-                    }
-                    else {
-                        Logger::log(LogLevel::INFO, "INIT", "Depth to color mode is disabled\n");
-                    }
+                if (!config_params["setting"]["voxelized"].get<bool>()) {
+                    Logger::log(LogLevel::INFO, "INIT", "Voxelizer mode: disabled\n");
+                    is_voxelized = false;
                 }
-                else
-                {
-                    Logger::log(LogLevel::ERROR, "INIT", "No device is initialized\n");
-                    return false;
+                else{
+                    is_voxelized = true;
+                    switch (get_voxelizer_mode(config_params["setting"]["voxelized_mode"].get<int>()))
+                    {
+                    case VOXELIZER_SUBSPACE:
+                        Logger::log(LogLevel::INFO, "INIT", "Voxelizer mode: subspace\n");
+                        break;
+                    
+                    default:
+                        Logger::log(LogLevel::ERROR, "INIT", "Invalid voxelizer mode\n");
+                        exit(EXIT_FAILURE);
+                        break;
+                    } 
                 }
-                return true;
+
+                if (config_params["setting"]["subsample_row"].get<int>() <= 0 || config_params["setting"]["subsample_col"].get<int>() <= 0){ 
+                    Logger::log(LogLevel::ERROR, "INIT", "Subsample value must be greater than 0\n");
+                }
+                else {
+                    Logger::log(LogLevel::INFO, "INIT", "Subsampling setup {row,col} : {" + std::to_string(config_params["setting"]["subsample_row"].get<int>()) 
+                                                                                    + "," + std::to_string(config_params["setting"]["subsample_col"].get<int>())
+                                                                                            + "}\n");
+                    
+                }
+
+                if(config_params["setting"]["depth_to_color"].get<bool>()) {
+                    Logger::log(LogLevel::INFO, "INIT", "Depth to color mode is enabled\n");
+                }
+                else {
+                    Logger::log(LogLevel::INFO, "INIT", "Depth to color mode is disabled\n");
+                }
+            }
+            else
+            {
+                Logger::log(LogLevel::ERROR, "INIT", "No device is initialized\n");
+                return false;
+            }
             return true;
         }
-
     } // namespace camera
 } // namespace uvgvolucap
