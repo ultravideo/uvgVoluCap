@@ -4,3 +4,4 @@
 [submodule "visualizer"]
 	path = visualizer
 	url = https://gitlab.tuni.fi/cs/ultravideo/pcc/visualizer.git
+	branch = Build-Visual-Studio
