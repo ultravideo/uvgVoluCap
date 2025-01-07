@@ -1,3 +1,6 @@
 [submodule "plyxporter"]
 	path = plyxporter
 	url = https://gitlab.tuni.fi/cs/ultravideo/pcc/06-plyxporter.git
+[submodule "visualizer"]
+	path = visualizer
+	url = https://gitlab.tuni.fi/cs/ultravideo/pcc/visualizer.git
