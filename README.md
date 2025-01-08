@@ -21,7 +21,24 @@ To build this project from source, you'll need to have vcpkg installed and added
 
    - Add the directory containing the vcpkg executable to your system's PATH environment variable. This step allows you to run vcpkg from any directory in your command prompt or terminal.
 
-3. **Build the project**:
+3. **Preparing**:
+    - Clone the main repository:
+    ```
+    git clone https://gitlab.tuni.fi/cs/ultravideo/pcc/uvgvolucap.git
+    cd uvgvolucap
+    ```
+
+    - Initialize the submodules
+    ```
+    git submodule update --init --recursive
+    ```
+
+    - To Pull Updates Later:
+    ```
+    git submodule update --remote
+    ```
+
+4. **Build the project**:
     - Navigate to this project folder ( Same location with vcpkg-configuration.json file ).
     - Run the following command to build:
     ```

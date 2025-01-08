@@ -5,6 +5,10 @@
     "azure-kinect-sensor-sdk",
     "glm",
     "realsense2",
-    "tinyply"
+    "tinyply",
+    "imgui",
+    "glfw3",	
+    "glew",
+    "glm"
   ]
 }
