@@ -45,7 +45,7 @@ To build this project from source, you'll need to have vcpkg installed and added
     mkdir build
     cd build
     cmake .. --preset=default
-    cmake --build . --config Release --parallel
+    cmake --build . --config Release --parallel --target install
     ```
     
 After following these steps, you should be able to build the project successfully.
