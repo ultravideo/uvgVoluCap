@@ -3,6 +3,7 @@
 #include <cstdlib>  // For system()
 #include <filesystem>
 #include <thread>
+#include <chrono> 
 
 void print_usage() {
     std::cout << "Usage: ./uvgVoluCap.exe --config <config_path> --addr_color <color_address> --addr_position <position_address> --running_time <running_time> --cam_type <cam_type> --running_mode <running_mode>" << std::endl;
@@ -41,7 +42,7 @@ int main(int argc, char* argv[]) {
             try {
                 cam_type = static_cast<CameraType>(std::stoi(argv[i + 1]));
             } catch (const std::exception& e) {
-                std::cout << "Invalid camera type" << std::endl;
+                std::cout << "Invalid camera type: " << e.what() << std::endl;
                 print_usage();
                 return 1;
             }
@@ -49,7 +50,7 @@ int main(int argc, char* argv[]) {
             try {
                 running_mode = static_cast<RunningMode>(std::stoi(argv[i + 1]));
             } catch (const std::exception& e) {
-                std::cout << "Invalid running mode" << std::endl;
+                std::cout << "Invalid running mode: " << e.what() << std::endl;
                 print_usage();
                 return 1;
             }
@@ -61,24 +62,69 @@ int main(int argc, char* argv[]) {
         print_usage();
         return 1;
     }
+
+    std::string exe_path = std::filesystem::path(argv[0]).parent_path().string();
+    std::string exe_path_str;
+    std::thread _thread;
+    
+    switch (running_mode)
+    {
+    case RunningMode::PLY:
+        exe_path_str = exe_path + "/plyXporter.exe" 
+        + " --addr_color " + config.color_address 
+        + " --addr_position " + config.position_address
+        + " --save_dir " + exe_path + "/PLY";
+        std::cout << "Running PLY exporter: " << exe_path_str << std::endl;
+        break;
+    case RunningMode::STREAM:
+        std::cout << "Running UVG Visualizer" << std::endl;
+        exe_path_str = exe_path + "/uvgVisualizer.exe";
+    default:
+        break;
+    }
     
     uvgvolucap::API::setup_config setup_config;
-
+    int external_prog = 0;
     switch (cam_type)
     {
     case CameraType::KINECT:
         // Run only Kinect
         uvgvolucap::API::setup_k4a_devices(config, setup_config);
+        _thread = std::thread([exe_path_str, &external_prog]() {
+            // external_prog = system(exe_path_str.c_str());
+        });
+        // Sleep 1s
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        if (external_prog != 0) {  // If system() fails
+            std::cerr << "Error: Execution failed with exit code " << external_prog << "\n";
+            exit(EXIT_FAILURE);  // Force terminate if execution fails
+        }
         uvgvolucap::API::k4a_run(config, setup_config);
         break;
     case CameraType::REALSENSE:
         // Run only RealSense
         uvgvolucap::API::setup_rs2_devices(config, setup_config);
+        _thread = std::thread([exe_path_str, &external_prog]() {
+            // external_prog = system(exe_path_str.c_str());
+        });
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        if (external_prog != 0) {  // If system() fails
+            std::cerr << "Error: Execution failed with exit code " << external_prog << "\n";
+            exit(EXIT_FAILURE);  // Force terminate if execution fails
+        }
         uvgvolucap::API::rs2_run(config, setup_config);
         break;
     case CameraType::ALL:
         // Run all devices
         uvgvolucap::API::setup_all_types_devices(config, setup_config);
+        _thread = std::thread([exe_path_str, &external_prog]() {
+            // external_prog = system(exe_path_str.c_str());
+        });
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        if (external_prog != 0) {  // If system() fails
+            std::cerr << "Error: Execution failed with exit code " << external_prog << "\n";
+            exit(EXIT_FAILURE);  // Force terminate if execution fails
+        }
         uvgvolucap::API::all_types_run(config, setup_config);
         break;
     default:
@@ -86,27 +132,5 @@ int main(int argc, char* argv[]) {
         break;
     }
 
-    std::string exe_path = std::filesystem::path(argv[0]).parent_path().string();
-    std::string exe_path_str;
-    std::thread _thread;
-    switch (running_mode)
-    {
-    case RunningMode::PLY:
-        exe_path_str = exe_path + "/plyXporter.exe";
-        _thread = std::thread([exe_path_str]() {
-            system(exe_path_str.c_str());
-        });
-        break;
-    case RunningMode::STREAM:
-        exe_path_str = exe_path + "/uvgVisualizer.exe";
-        _thread = std::thread([exe_path_str]() {
-            system(exe_path_str.c_str());
-        });
-    default:
-        break;
-    }
-
-    // thread join
-    _thread.join();
-    return 0;
+    exit(EXIT_SUCCESS); 
 }
