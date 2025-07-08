@@ -28,7 +28,9 @@ int main(int argc, char* argv[]) {
     // -i: config_path, -c: color_address, -p: position_address
     uvgvolucap::API::input_config config;
     CameraType cam_type = CameraType::ALL;
+    uvgvolucap::API::setup_config setup_config;
     RunningMode running_mode = RunningMode::PLY;
+
     for (int i = 1; i < argc; i++) {
         if (std::string(argv[i]) == "--config" && std::string(argv[i + 1]).substr(0, 1) != "-") {
             config.config_path = argv[i + 1];
@@ -51,6 +53,14 @@ int main(int argc, char* argv[]) {
                 running_mode = static_cast<RunningMode>(std::stoi(argv[i + 1]));
             } catch (const std::exception& e) {
                 std::cout << "Invalid running mode: " << e.what() << std::endl;
+                print_usage();
+                return 1;
+            }
+        } else if (std::string(argv[i]) == "--voxelized" && std::string(argv[i + 1]).substr(0, 1) != "-") {
+            try {
+                setup_config.is_voxelized = true;
+            } catch (const std::exception& e) {
+                std::cout << "Invalid voxelized mode: " << e.what() << std::endl;
                 print_usage();
                 return 1;
             }
@@ -83,7 +93,6 @@ int main(int argc, char* argv[]) {
         break;
     }
     
-    uvgvolucap::API::setup_config setup_config;
     int external_prog = 0;
     switch (cam_type)
     {
@@ -91,7 +100,7 @@ int main(int argc, char* argv[]) {
         // Run only Kinect
         uvgvolucap::API::setup_k4a_devices(config, setup_config);
         _thread = std::thread([exe_path_str, &external_prog]() {
-            // external_prog = system(exe_path_str.c_str());
+            external_prog = system(exe_path_str.c_str());
         });
         // Sleep 1s
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -99,6 +108,7 @@ int main(int argc, char* argv[]) {
             std::cerr << "Error: Execution failed with exit code " << external_prog << "\n";
             exit(EXIT_FAILURE);  // Force terminate if execution fails
         }
+        uvgvolucap::Logger::log(uvgvolucap::LogLevel::INFO, "Kinect", "Running Kinect");
         uvgvolucap::API::k4a_run(config, setup_config);
         break;
     case CameraType::REALSENSE:
@@ -112,6 +122,7 @@ int main(int argc, char* argv[]) {
             std::cerr << "Error: Execution failed with exit code " << external_prog << "\n";
             exit(EXIT_FAILURE);  // Force terminate if execution fails
         }
+        uvgvolucap::Logger::log(uvgvolucap::LogLevel::INFO, "RealSense", "Running RealSense");
         uvgvolucap::API::rs2_run(config, setup_config);
         break;
     case CameraType::ALL:
@@ -125,6 +136,7 @@ int main(int argc, char* argv[]) {
             std::cerr << "Error: Execution failed with exit code " << external_prog << "\n";
             exit(EXIT_FAILURE);  // Force terminate if execution fails
         }
+        uvgvolucap::Logger::log(uvgvolucap::LogLevel::INFO, "Kinect + RealSense", "Running All");
         uvgvolucap::API::all_types_run(config, setup_config);
         break;
     default:

@@ -10,7 +10,7 @@
 #include <unordered_set>
 
 // #define POINT_UINT16
-#define COLOR_UCHAR
+// #define COLOR_UCHAR
 
 namespace uvgvolucap {
     namespace geometry {  
