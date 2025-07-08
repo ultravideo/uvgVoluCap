@@ -23,10 +23,10 @@ find_package(nlohmann_json 3.11.3 REQUIRED)
 find_package(cppzmq CONFIG REQUIRED)
 
 target_link_libraries(uvgvolucap
-    utilsLibrary
-    logLibrary
-    cameraLibrary
-    geometryLibrary
+    __utilsLibrary
+    __logLibrary
+    __cameraLibrary
+    __geometryLibrary
     nlohmann_json::nlohmann_json
     cppzmq
     cppzmq-static

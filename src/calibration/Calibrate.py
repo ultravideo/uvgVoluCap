@@ -11,6 +11,23 @@ from rs2_handler import rs2_Grabber, rs
 # from utils import *
 # from TuningTransformMatrix import TuningTransformMatrix
 
+def coord_transform_to_matrix(coord_transform_dict):
+    """
+    Convert coord_transform dictionary to a 4x4 numpy matrix.
+    
+    Args:
+        coord_transform_dict: Dictionary with keys "0" to "15" representing matrix elements
+        
+    Returns:
+        numpy.ndarray: 4x4 transformation matrix
+    """
+    matrix = np.zeros((4, 4))
+    for i in range(16):
+        row = i // 4
+        col = i % 4
+        matrix[row, col] = coord_transform_dict[str(i)]
+    return matrix
+
 def pick_points(pcd):
     print("")
     print(
@@ -63,19 +80,20 @@ def k4a_save(transform_matrices, ROI_per_device):
             json_template = json.load(template_file)
 
         for serial, matrix in transform_matrices.items():
-            device = PyK4A(
-            Config(
-                color_resolution=pyk4a.ColorResolution.RES_1536P,
-                color_format=pyk4a.ImageFormat.COLOR_BGRA32,
-                camera_fps=pyk4a.FPS.FPS_15,
-                depth_mode=pyk4a.DepthMode.NFOV_UNBINNED,
-                synchronized_images_only=True,
-            ),
-            device_id=serial
-            )
-            device.open()
+            print(f"Serial: {serial}")
+            # device = PyK4A(
+            # Config(
+            #     color_resolution=pyk4a.ColorResolution.RES_1536P,
+            #     color_format=pyk4a.ImageFormat.COLOR_BGRA32,
+            #     camera_fps=pyk4a.FPS.FPS_15,
+            #     depth_mode=pyk4a.DepthMode.NFOV_UNBINNED,
+            #     synchronized_images_only=True,
+            # ),
+            # device_id=serial
+            # )
+            # device.open()
             
-            json_template['devices_config'].update({device.serial: {
+            json_template['devices_config'].update({serial: {
                 'disabled': False, 
                 'ROI': {
                     "start_x": ROI_per_device[serial][0],
@@ -87,9 +105,9 @@ def k4a_save(transform_matrices, ROI_per_device):
                 }})
             
             for i in range(0, 16):
-                json_template['devices_config'][device.serial]['coord_transform'].update({f"{i}": matrix.flatten()[i]})
+                json_template['devices_config'][serial]['coord_transform'].update({f"{i}": matrix.flatten()[i]})
 
-            device.close()
+            # device.close()
 
         # Save the updated JSON to a new file
         print(current_dir + r'\cameraconfig.json')
@@ -220,7 +238,39 @@ def tuning_tranform_matrix(source_l, target_l, transform_matrix):
     testpc += target_l
     o3d.visualization.draw_geometries([testpc])
     return registration_ms_icp.transformation.numpy()
-    
+
+def test():
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+
+    k4a_grabber = k4a_Grabber()
+    k4a_device_ids = k4a_grabber.get_grabber_list()
+
+    rs_grabber = rs2_Grabber()
+    rs_device_ids = rs_grabber.get_grabber_list()
+    if not rs_device_ids and not k4a_device_ids:
+        print("No devices available")
+        exit()
+
+    # Read the cameraconfig.json file
+    with open(os.path.join(current_dir + r'\cameraconfig.json'), 'r') as config_file:
+        config = json.load(config_file)
+
+    merged_pc = o3d.geometry.PointCloud()
+    for device_id in k4a_device_ids:
+        print(f"Calibrating Kinect device {device_id}")
+        # grabber.setup_cam(device_id)
+        pc, serial = k4a_grabber.capture_point_cloud(device_id)
+
+        # Transform the point cloud using coord_transform from cameraconfig.json
+        coord_transform_dict = config['devices_config'][serial]['coord_transform']
+        transform_matrix = coord_transform_to_matrix(coord_transform_dict)
+        pc = pc.transform(transform_matrix)
+
+        merged_pc += pc
+
+    # Show the merged point cloud
+    o3d.visualization.draw_geometries([merged_pc])
+
 if __name__ == "__main__":
     # Get current running directory
     current_dir = os.path.dirname(os.path.realpath(__file__))
@@ -241,7 +291,7 @@ if __name__ == "__main__":
     for device_id in k4a_device_ids:
         print(f"Calibrating Kinect device {device_id}")
         # grabber.setup_cam(device_id)
-        pc = k4a_grabber.capture_point_cloud(device_id)
+        pc, _ = k4a_grabber.capture_point_cloud(device_id)
         serial = k4a_grabber.get_camera_serial()
         pointclouds[serial] = pc
         ROI_per_device[serial] = k4a_grabber.get_ROI()
@@ -293,7 +343,7 @@ if __name__ == "__main__":
             elif user_input.lower() == 'p':
                 print(f"Get matrix without tuning for {device_id}")
                 maxtrix = calib(pointcloud, first_pc)
-                tuned_matrix = tuning_tranform_matrix(pointcloud, first_pc, maxtrix)
+                tuned_matrix = tuning_tranform_matrix(pointcloud, first_pc, matrix_temp)
             else:
                 print("Invalid input. Please enter 'y' to confirm or 'n' to retry.")
 
@@ -310,5 +360,7 @@ if __name__ == "__main__":
     vis.run()  # user picks points
     vis.destroy_window()
 
-    # k4a_save(transform_matrices, ROI_per_device)
-    rs2_save(transform_matrices, ROI_per_device)
+    k4a_save(transform_matrices, ROI_per_device)
+    # rs2_save(transform_matrices, ROI_per_device)
+
+    test()

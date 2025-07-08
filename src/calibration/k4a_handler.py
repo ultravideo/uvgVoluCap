@@ -92,7 +92,7 @@ class k4a_Grabber:
                     break
 
         self.device.stop()
-        return self.point_cloud
+        return self.point_cloud, self.serial
 
     def get_grabber_list(self):
         return self.device_ids

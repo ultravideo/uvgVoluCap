@@ -1,0 +1,17 @@
+name: uvg_volucap
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - numpy
+  - matplotlib
+  - open3d
+  - pip
+  - scipy
+  - tqdm
+  - loguru
+  - pyk4a
+  - pyrealsense2
+  - pip:
+    - opencv-python

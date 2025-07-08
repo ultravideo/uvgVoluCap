@@ -4,6 +4,11 @@
     "nlohmann-json",
     "azure-kinect-sensor-sdk",
     "glm",
-    "realsense2"
+    "realsense2",
+    "tinyply",
+    "imgui",
+    "glfw3",	
+    "glew",
+    "glm"
   ]
 }

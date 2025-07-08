@@ -1,6 +1,6 @@
 
 
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.27)
 
 # Include CMake modules
 
@@ -13,12 +13,13 @@ option(BUILD_SHARED_LIBS "Build using shared uvgVoluCap library" ON)
 project(uvgVoluCap VERSION ${uvgVoluCap_VER})
 
 if(MSVC)
-add_compile_options(/W3 /WX)
+# add_compile_options(/W3 /WX)
+add_compile_options(/W3)
 else()
 add_compile_options(-W -Wall -Werror -Wno-unused-variable)
 endif()
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -39,11 +40,13 @@ endif()
 # Run subdirectory make files
 add_subdirectory(src/lib)
 add_subdirectory(src/app)
+add_subdirectory(plyxporter)
+add_subdirectory(visualizer)
 # add_subdirectory(examples)
 
 # Custom target to apply formating to all source file
 # todo : check if user has the package : sudo apt-get install clang-format
-add_custom_target(format
+add_custom_target(mainformat
   find
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     -type f
@@ -88,7 +91,7 @@ add_custom_target(format
 # Define installation destinations
 set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/build/bin" CACHE PATH "Install path prefix" FORCE)
 
-add_custom_target(PrintConfig ALL
+add_custom_target(MainPrintConfig ALL
     COMMAND ${CMAKE_COMMAND} -E echo "Build configuration: $<CONFIG>"
 )
 
@@ -110,4 +113,12 @@ message(STATUS "INSTALL_CONFIG_DIR: ${INSTALL_CONFIG_DIR}")
 
 install(DIRECTORY ${CMAKE_BINARY_DIR}/src/app/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
 install(DIRECTORY ${CMAKE_BINARY_DIR}/src/lib/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/asset DESTINATION ${CMAKE_INSTALL_PREFIX})
+# Install plyxporter module to bin
+install(DIRECTORY ${CMAKE_BINARY_DIR}/plyxporter/src/app/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(DIRECTORY ${CMAKE_BINARY_DIR}/plyxporter/src/lib/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
+# Install visualizer module to bin
+install(DIRECTORY ${CMAKE_BINARY_DIR}/visualizer/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(DIRECTORY ${CMAKE_BINARY_DIR}/visualizer/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
+file(COPY ${CMAKE_SOURCE_DIR}/visualizer/shaders DESTINATION ${CMAKE_INSTALL_PREFIX})
+
+# install(DIRECTORY ${CMAKE_SOURCE_DIR}/asset DESTINATION ${CMAKE_INSTALL_PREFIX})
