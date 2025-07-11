@@ -118,7 +118,7 @@ def k4a_save(transform_matrices, ROI_per_device):
 
 def rs2_save(transform_matrices, ROI_per_device):
     current_dir = os.path.dirname(os.path.realpath(__file__))
-    with open(os.path.join(current_dir + r'\template.json'), 'r') as template_file:
+    with open(os.path.join(current_dir, r'template.json'), 'r') as template_file:
         json_template = json.load(template_file)
 
     print(f"Size of transform_matrices: {len(transform_matrices)}")
@@ -360,7 +360,7 @@ if __name__ == "__main__":
     vis.run()  # user picks points
     vis.destroy_window()
 
-    k4a_save(transform_matrices, ROI_per_device)
-    # rs2_save(transform_matrices, ROI_per_device)
+    # k4a_save(transform_matrices, ROI_per_device)
+    rs2_save(transform_matrices, ROI_per_device)
 
-    test()
+    # test()

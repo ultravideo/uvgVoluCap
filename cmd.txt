@@ -1,0 +1,8 @@
+ ./uvgVoluCap --config ./cameraconfig.json --addr_color tcp://localhost:5555 --addr_position tcp://localhost:5556 --running_time 60 --cam_type 1 --running_mode 0
+ 
+ ./uvgVoluCap --config ./cameraconfig.json --addr_color tcp://10.21.25.231:5558 --addr_position tcp://10.21.25.231:5559 --running_time 60 --cam_type 1 --running_mode 0
+
+ sudo sh -c 'echo 1000 > /sys/module/usbcore/parameters/usbfs_memory_mb'
+
+set usbfs_memory_mb to 16MB * 8 * (number of cameras) = 128MB * (number of cameras).
+set usbfs_memory_mb to 16MB * 8 * (number of cameras) = 128MB * (number of cameras).

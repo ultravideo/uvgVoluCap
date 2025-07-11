@@ -1,6 +1,7 @@
 #include "point_cloud.hpp"
 #include <iostream>
 #include <cmath>	
+#include <cstring>
 
 namespace uvgvolucap {
     namespace geometry {
@@ -12,7 +13,7 @@ namespace uvgvolucap {
 			vect3u16 position{static_cast<uint16_t>(x), static_cast<uint16_t>(y), static_cast<uint16_t>(z)};
 // std::cout << "Uint16: " << position.x << " " << position.y << " " << position.z << std::endl;
 #else
-			glm::vec3 position{x, y, z};
+			glm::vec3 position{x/10, y/10, z/10};
 #endif
 
 #ifdef COLOR_UCHAR
@@ -202,7 +203,7 @@ namespace uvgvolucap {
 			glm::vec3 color = glm::vec3(r, g, b);
 #endif
 			
-			glm::vec3 point = glm::vec3(x, y, z);
+			glm::vec3 point = glm::vec3(x/10, y/10, z/10);
 
 			// std::lock_guard<std::mutex> lock(voxel_mx);
 			auto voxel = voxelMap.find(point);

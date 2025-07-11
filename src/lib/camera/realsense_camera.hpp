@@ -22,8 +22,8 @@ namespace uvgvolucap {
         class Realsense_Frame : public BasedFrame {
         private:
             rs2::pointcloud frame_pointcloud; /**< Frame point cloud */
-            rs2::depth_frame depth_frame = NULL; /**< Depth frame */
-            rs2::video_frame color_frame = NULL; /**< Color frame */
+            rs2::depth_frame depth_frame; /**< Depth frame */
+            rs2::video_frame color_frame; /**< Color frame */
         
         public:
             Realsense_Frame(int _id, rs2::depth_frame depth_, rs2::video_frame color_, int min_bound_[3], int max_bound_[3], int number_of_slices_ = 8);

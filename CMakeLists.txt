@@ -16,7 +16,8 @@ if(MSVC)
 # add_compile_options(/W3 /WX)
 add_compile_options(/W3)
 else()
-add_compile_options(-W -Wall -Werror -Wno-unused-variable)
+add_compile_options(-Wno-unused-but-set-variable -Wno-reorder)
+# add_compile_options(-W -Wall -Werror -Wno-unused-variable)
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -40,8 +41,8 @@ endif()
 # Run subdirectory make files
 add_subdirectory(src/lib)
 add_subdirectory(src/app)
-add_subdirectory(plyxporter)
-add_subdirectory(visualizer)
+# add_subdirectory(plyxporter)
+# add_subdirectory(visualizer)
 # add_subdirectory(examples)
 
 # Custom target to apply formating to all source file
@@ -111,14 +112,20 @@ message(STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "CMAKE_GENERATOR: ${CMAKE_GENERATOR}")
 message(STATUS "INSTALL_CONFIG_DIR: ${INSTALL_CONFIG_DIR}")
 
-install(DIRECTORY ${CMAKE_BINARY_DIR}/src/app/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
-install(DIRECTORY ${CMAKE_BINARY_DIR}/src/lib/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
-# Install plyxporter module to bin
-install(DIRECTORY ${CMAKE_BINARY_DIR}/plyxporter/src/app/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
-install(DIRECTORY ${CMAKE_BINARY_DIR}/plyxporter/src/lib/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
-# Install visualizer module to bin
-install(DIRECTORY ${CMAKE_BINARY_DIR}/visualizer/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
-install(DIRECTORY ${CMAKE_BINARY_DIR}/visualizer/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
-file(COPY ${CMAKE_SOURCE_DIR}/visualizer/shaders DESTINATION ${CMAKE_INSTALL_PREFIX})
+if (CMAKE_GENERATOR MATCHES "Visual Studio")
+    install(DIRECTORY ${CMAKE_BINARY_DIR}/src/app/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
+    install(DIRECTORY ${CMAKE_BINARY_DIR}/src/lib/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
+    # Install plyxporter module to bin
+    install(DIRECTORY ${CMAKE_BINARY_DIR}/plyxporter/src/app/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
+    install(DIRECTORY ${CMAKE_BINARY_DIR}/plyxporter/src/lib/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
+    # Install visualizer module to bin
+    install(DIRECTORY ${CMAKE_BINARY_DIR}/visualizer/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
+    install(DIRECTORY ${CMAKE_BINARY_DIR}/visualizer/${INSTALL_CONFIG_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX})
+    file(COPY ${CMAKE_SOURCE_DIR}/visualizer/shaders DESTINATION ${CMAKE_INSTALL_PREFIX})
+else()
+    # Ninja or other generators: add your install logic here if needed
+    install(DIRECTORY ${CMAKE_BINARY_DIR}/src/app/ DESTINATION ${CMAKE_INSTALL_PREFIX})
+    install(DIRECTORY ${CMAKE_BINARY_DIR}/src/lib/ DESTINATION ${CMAKE_INSTALL_PREFIX})
+endif()
 
 # install(DIRECTORY ${CMAKE_SOURCE_DIR}/asset DESTINATION ${CMAKE_INSTALL_PREFIX})

@@ -7,7 +7,7 @@ namespace uvgvolucap {
             :   BasedFrame(_id, min_bound_, max_bound_, number_of_slices_),
                 depth_frame(depth_), 
                 color_frame(color_) {
-            for (int i = 0; i < number_of_slices; i++)
+            for (size_t i = 0; i < number_of_slices; i++)
             {
                 std::shared_ptr<geometry::PclFragment> subspace_slice = std::make_shared<geometry::PclFragment>();
                 subspace_slice->set_min_bound(min_bound[0], i * (max_bound[1] - min_bound[1]) / number_of_slices, min_bound[2]);
@@ -81,7 +81,8 @@ namespace uvgvolucap {
             device_info.filter_config.max_z = _config["filter"]["max_z"].get<float>();
             device_info.filter_config.min_z = _config["filter"]["min_z"].get<float>();
 
-            device_info.pointcloud_config.geometry_precision = static_cast<size_t>(std::pow(2,  _config["grid"]["geometry_precision"] - 1));
+            int precision = _config["grid"]["geometry_precision"].get<int>();
+            device_info.pointcloud_config.geometry_precision = static_cast<size_t>(std::pow(2, precision - 1));
             device_info.pointcloud_config.min_bound[0] = _config["grid"]["min_bound"]["x"].get<int>();
             device_info.pointcloud_config.min_bound[1] = _config["grid"]["min_bound"]["y"].get<int>();
             device_info.pointcloud_config.min_bound[2] = _config["grid"]["min_bound"]["z"].get<int>();
@@ -96,7 +97,7 @@ namespace uvgvolucap {
             device_info.roi.width = device_attribute->at("ROI").at("width").get<size_t>();
             device_info.roi.height = device_attribute->at("ROI").at("height").get<size_t>();
 
-            for (int i = 0; i < device_info.transformation_matrix.size(); i++)
+            for (size_t i = 0; i < device_info.transformation_matrix.size(); i++)
             {
                 device_info.transformation_matrix[i] = device_attribute->at("coord_transform").at(std::to_string(i)).get<float>();
             }
@@ -246,7 +247,7 @@ namespace uvgvolucap {
 
             const unsigned char *texture_data = (unsigned char*)color_frame.get_data();
 
-            for (int i = 0; i < points.size(); i++)
+            for (size_t i = 0; i < points.size(); i++)
             {
                 if (vertices[i].z)
                 {
@@ -302,7 +303,7 @@ namespace uvgvolucap {
 
             const unsigned char *texture_data = (unsigned char*)color_frame.get_data();
 
-            for (int i = 0; i < points.size(); i++)
+            for (size_t i = 0; i < points.size(); i++)
             {
                 if (vertices[i].z)
                 {
@@ -329,10 +330,10 @@ namespace uvgvolucap {
                     float y = (device_info.transformation_matrix[4] * x_o + device_info.transformation_matrix[5] * y_o + device_info.transformation_matrix[6] * z_o + device_info.transformation_matrix[7]);
                     float z = (device_info.transformation_matrix[8] * x_o + device_info.transformation_matrix[9] * y_o + device_info.transformation_matrix[10] * z_o + device_info.transformation_matrix[11]);
 
-                    // if (x > device_info.filter_config.min_z && x < device_info.filter_config.max_z &&
-                    //     y > device_info.filter_config.min_xy && y < device_info.filter_config.max_xy &&
-                    //     z > device_info.filter_config.min_z && z < device_info.filter_config.max_z)
-                    // {
+                    if (x > device_info.filter_config.min_z && x < device_info.filter_config.max_z &&
+                        y > device_info.filter_config.min_xy && y < device_info.filter_config.max_xy &&
+                        z > device_info.filter_config.min_z && z < device_info.filter_config.max_z)
+                    {
 
                         glm::vec3 grid_point = grid_ptr->real_to_grid(x, y, z);
 
@@ -346,7 +347,7 @@ namespace uvgvolucap {
                             uint8_t b =  texture_data[color_idx + 2];
                             frame->get_subspace_fragments()->at(idx)->add_point_subspace(grid_point.x, grid_point.y, grid_point.z, r, g, b, grid_ptr->get_grid_origin());   
                         }
-                    // }
+                    }
                 }
             }
 
