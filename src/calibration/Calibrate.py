@@ -3,10 +3,10 @@ import open3d as o3d
 import os
 import copy
 import json
-import pyk4a
+#import pyk4a
 
-from pyk4a import Config, PyK4A
-from k4a_handler import k4a_Grabber
+#from pyk4a import Config, PyK4A
+#from k4a_handler import k4a_Grabber
 from rs2_handler import rs2_Grabber, rs
 # from utils import *
 # from TuningTransformMatrix import TuningTransformMatrix
@@ -279,22 +279,22 @@ if __name__ == "__main__":
     ROI_per_device = {}
     transform_matrices = {}
 
-    k4a_grabber = k4a_Grabber()
-    k4a_device_ids = k4a_grabber.get_grabber_list()
+    #k4a_grabber = k4a_Grabber()
+    #k4a_device_ids = k4a_grabber.get_grabber_list()
 
     rs_grabber = rs2_Grabber()
     rs_device_ids = rs_grabber.get_grabber_list()
-    if not rs_device_ids and not k4a_device_ids:
+    if not rs_device_ids: # and not k4a_device_ids:
         print("No devices available")
         exit()
 
-    for device_id in k4a_device_ids:
-        print(f"Calibrating Kinect device {device_id}")
+    #for device_id in k4a_device_ids:
+        #print(f"Calibrating Kinect device {device_id}")
         # grabber.setup_cam(device_id)
-        pc, _ = k4a_grabber.capture_point_cloud(device_id)
-        serial = k4a_grabber.get_camera_serial()
-        pointclouds[serial] = pc
-        ROI_per_device[serial] = k4a_grabber.get_ROI()
+        #pc, _ = k4a_grabber.capture_point_cloud(device_id)
+        #serial = k4a_grabber.get_camera_serial()
+        #pointclouds[serial] = pc
+        #ROI_per_device[serial] = k4a_grabber.get_ROI()
     
     for device_id in rs_device_ids:
         print(f"Calibrating Realsense device {device_id}")

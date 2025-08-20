@@ -1,0 +1,298 @@
+{
+  "camera": [
+    {
+      "serial": "138322252604",
+      "trafo": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "type": "realsense"
+    },
+    {
+      "serial": "142422250195",
+      "trafo": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "type": "realsense"
+    },
+    {
+      "serial": "138322252957",
+      "trafo": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "type": "realsense"
+    },
+    {
+      "serial": "142422251106",
+      "trafo": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "type": "realsense"
+    },
+    {
+      "serial": "141322250909",
+      "trafo": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "type": "realsense"
+    },
+    {
+      "serial": "141322250563",
+      "trafo": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "type": "realsense"
+    },
+    {
+      "serial": "141322251299",
+      "trafo": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "type": "realsense"
+    },
+    {
+      "serial": "142422250904",
+      "trafo": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "type": "realsense"
+    }
+  ],
+  "filtering": {
+    "decimation_magnitude": 1,
+    "do_decimation": false,
+    "do_hole_filling": false,
+    "do_spatial": true,
+    "do_temporal": false,
+    "do_threshold": true,
+    "hole_filling_mode": 0,
+    "map_color_to_depth": 1,
+    "spatial_holes_fill": 0,
+    "spatial_magnitude": 2,
+    "spatial_smooth_alpha": 0.5,
+    "spatial_smooth_delta": 20,
+    "temporal_persistency": 3,
+    "temporal_smooth_alpha": 0.4000000059604645,
+    "temporal_smooth_delta": 20,
+    "threshold_max_distance": 4.0,
+    "threshold_min_distance": 0.15000000596046448
+  },
+  "hardware": {
+    "backlight_compensation": 0,
+    "color_exposure": -166,
+    "color_gain": 64,
+    "color_height": 720,
+    "color_width": 1280,
+    "depth_exposure": -33000,
+    "depth_gain": 16,
+    "depth_height": 480,
+    "depth_width": 848,
+    "fps": 30,
+    "laser_power": 150,
+    "visual_preset": 0,
+    "whitebalance": -4600
+  },
+  "processing": {
+    "depth_x_erosion": 0,
+    "depth_y_erosion": 0,
+    "greenscreen_removal": false,
+    "height_max": 0.0,
+    "height_min": 0.0,
+    "radius_filter": 0.0
+  },
+  "sync": {
+    "sync_master_serial": "",
+    "sync_mode": 2
+  },
+  "system": {
+    "debug": false,
+    "playback_realtime": false,
+    "prefer_color_timing": true,
+    "record_to_directory": ""
+  },
+  "type": "realsense",
+  "version": 4
+}

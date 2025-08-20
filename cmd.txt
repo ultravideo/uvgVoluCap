@@ -6,3 +6,7 @@
 
 set usbfs_memory_mb to 16MB * 8 * (number of cameras) = 128MB * (number of cameras).
 set usbfs_memory_mb to 16MB * 8 * (number of cameras) = 128MB * (number of cameras).
+
+ ./uvgVoluCap --config ./rs_camconfig.json --addr_color tcp://10.21.25.231:5558 --addr_position tcp://10.21.25.231:5559 --running_time 60 --cam_type 2 --running_mode 0
+
+https://gitlab.tuni.fi/cs/ultravideo/pcc/visualizer.git
