@@ -13,13 +13,13 @@ void print_usage() {
     std::cout << "Note: If running time and running mode are not provided, the default value will be 30 seconds and all devices will be run (Kinect and RealSense)." << std::endl;
 }
 
-const enum CameraType {
+enum CameraType {
     ALL,
     KINECT,
     REALSENSE
 };
 
-const enum RunningMode {
+enum RunningMode {
     PLY,
     STREAM
 };
@@ -27,7 +27,7 @@ const enum RunningMode {
 int main(int argc, char* argv[]) {
     // -i: config_path, -c: color_address, -p: position_address
     uvgvolucap::API::input_config config;
-    CameraType cam_type = CameraType::ALL;
+    CameraType cam_type = CameraType::KINECT;
     uvgvolucap::API::setup_config setup_config;
     RunningMode running_mode = RunningMode::PLY;
 
@@ -42,13 +42,14 @@ int main(int argc, char* argv[]) {
             config.running_time = std::stoi(argv[i + 1]);
         } else if (std::string(argv[i]) == "--cam_type" && std::string(argv[i + 1]).substr(0, 1) != "-") {
             try {
+                std::cout << "Camera type: " << argv[i + 1] << std::endl;
                 cam_type = static_cast<CameraType>(std::stoi(argv[i + 1]));
             } catch (const std::exception& e) {
                 std::cout << "Invalid camera type: " << e.what() << std::endl;
                 print_usage();
                 return 1;
             }
-        } else if (std::string(argv[i]) == "--cam_type" && std::string(argv[i + 1]).substr(0, 1) != "-") {
+        } else if (std::string(argv[i]) == "--running_mode" && std::string(argv[i + 1]).substr(0, 1) != "-") {
             try {
                 running_mode = static_cast<RunningMode>(std::stoi(argv[i + 1]));
             } catch (const std::exception& e) {
@@ -77,21 +78,21 @@ int main(int argc, char* argv[]) {
     std::string exe_path_str;
     std::thread _thread;
     
-    switch (running_mode)
-    {
-    case RunningMode::PLY:
-        exe_path_str = exe_path + "/plyXporter.exe" 
-        + " --addr_color " + config.color_address 
-        + " --addr_position " + config.position_address
-        + " --save_dir " + exe_path + "/PLY";
-        std::cout << "Running PLY exporter: " << exe_path_str << std::endl;
-        break;
-    case RunningMode::STREAM:
-        std::cout << "Running UVG Visualizer" << std::endl;
-        exe_path_str = exe_path + "/uvgVisualizer.exe";
-    default:
-        break;
-    }
+    // switch (running_mode)
+    // {
+    // case RunningMode::PLY:
+    //     exe_path_str = exe_path + "/plyXporter.exe" 
+    //     + " --addr_color " + config.color_address 
+    //     + " --addr_position " + config.position_address
+    //     + " --save_dir " + exe_path + "/PLY";
+    //     std::cout << "Running PLY exporter: " << exe_path_str << std::endl;
+    //     break;
+    // case RunningMode::STREAM:
+    //     std::cout << "Running UVG Visualizer" << std::endl;
+    //     exe_path_str = exe_path + "/uvgVisualizer.exe";
+    // default:
+    //     break;
+    // }
     
     int external_prog = 0;
     switch (cam_type)
@@ -108,7 +109,7 @@ int main(int argc, char* argv[]) {
             std::cerr << "Error: Execution failed with exit code " << external_prog << "\n";
             exit(EXIT_FAILURE);  // Force terminate if execution fails
         }
-        uvgvolucap::Logger::log(uvgvolucap::LogLevel::INFO, "Kinect", "Running Kinect");
+        uvgvolucap::Logger::log(uvgvolucap::LogLevel::INFO, "Kinect", "Running Kinect\n");
         uvgvolucap::API::k4a_run(config, setup_config);
         break;
     case CameraType::REALSENSE:

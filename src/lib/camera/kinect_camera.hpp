@@ -33,8 +33,8 @@ namespace uvgvolucap {
          */
         class Kinect_Frame : public BasedFrame {
         private:
-            k4a_image_t depth_image = NULL; /**< Depth image */
-            k4a_image_t color_image = NULL; /**< Color image */
+            k4a_image_t depth_image; /**< Depth image */
+            k4a_image_t color_image; /**< Color image */
 
         public:
             /**
@@ -84,8 +84,8 @@ namespace uvgvolucap {
             k4a_device_configuration_t m_config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;   // Device configuration in Azure Kinect SDK
             k4a_calibration_t m_calibration;                                            // Device calibration in Azure Kinect SDK                      
             k4a_transformation_t transformation_handle = nullptr;                       // Transformation handler in Azure Kinect SDK
-            k4a_image_t xy_table = NULL;                                                // Pre-defined table for fast transformation between depth and color image
-            k4a_float2_t *xy_table_data = NULL;                                         // Data of the xy_table after getting from depth/color image                      
+            k4a_image_t xy_table;                                                // Pre-defined table for fast transformation between depth and color image
+            k4a_float2_t *xy_table_data = nullptr;                                         // Data of the xy_table after getting from depth/color image                      
             KinectCameraInfo device_info;                                               // Device information  including the setting, filter, and point cloud configuration                
 
         public:

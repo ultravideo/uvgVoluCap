@@ -323,7 +323,7 @@ namespace uvgvolucap {
 
             //constructor
             MergeBufferPointCloud(size_t total_cams) {
-                for (int i = 0; i < total_cams; i++)
+                for (size_t i = 0; i < total_cams; i++)
                 {
                     _slice_fragments_ptr device_slice_container = std::make_shared<_slices_fragment_vec>();
                     for (int j = 0; j < step; j++)

@@ -7,7 +7,7 @@ namespace uvgvolucap {
             :   BasedFrame(_id, min_bound_, max_bound_, number_of_slices_),
                 depth_image(depth_), 
                 color_image(color_) {
-            for (int i = 0; i < number_of_slices; i++)
+            for (size_t i = 0; i < number_of_slices; i++)
             {
                 std::shared_ptr<geometry::PclFragment> subspace_slice = std::make_shared<geometry::PclFragment>();
                 subspace_slice->set_min_bound(min_bound[0], i * (max_bound[1] - min_bound[1]) / number_of_slices, min_bound[2]);
@@ -73,7 +73,8 @@ namespace uvgvolucap {
             device_info.filter_config.max_z            = _config["filter"]["max_z"].get<float>();
             device_info.filter_config.min_z            = _config["filter"]["min_z"].get<float>();
 
-            device_info.pointcloud_config.geometry_precision    = static_cast<size_t>(std::pow(2,  _config["grid"]["geometry_precision"] - 1));
+            int precision = _config["grid"]["geometry_precision"].get<int>();
+            device_info.pointcloud_config.geometry_precision = static_cast<size_t>(std::pow(2, precision - 1));
             device_info.pointcloud_config.min_bound[0]          = _config["grid"]["min_bound"]["x"].get<int>();
             device_info.pointcloud_config.min_bound[1]          = _config["grid"]["min_bound"]["y"].get<int>();
             device_info.pointcloud_config.min_bound[2]          = _config["grid"]["min_bound"]["z"].get<int>();
@@ -88,7 +89,7 @@ namespace uvgvolucap {
             device_info.roi.width = device_attribute->at("ROI").at("width").get<size_t>();
             device_info.roi.height = device_attribute->at("ROI").at("height").get<size_t>();
 
-            for (int i = 0; i < device_info.transformation_matrix.size(); i++)
+            for (size_t i = 0; i < device_info.transformation_matrix.size(); i++)
             {
                 device_info.transformation_matrix[i] = device_attribute->at("coord_transform").at(std::to_string(i)).get<float>();
             }
@@ -159,6 +160,7 @@ namespace uvgvolucap {
             {
                 close();
                 Logger::log(LogLevel::INFO, device_info.serial_number, "Fail to create transformation handle\n");
+                throw std::runtime_error("Failed to create transformation handle");
             }
 
             start();
@@ -417,14 +419,19 @@ namespace uvgvolucap {
         }
 
         void Kinect::process_frame_voxel_subspace(std::shared_ptr<Kinect_Frame> frame) {
+            std::cout << "Start Process frame voxel subspace" << std::endl;
 #ifdef PROCESSING_TIMER
             auto start_time = std::chrono::high_resolution_clock::now();
 #endif
             int width = k4a_image_get_width_pixels(frame->get_depth_image());
             int height = k4a_image_get_height_pixels(frame->get_depth_image());
 
+            std::cout << "Width: " << width << " Height: " << height << std::endl;
+
             uint16_t *depth_data = (uint16_t *)(void *)k4a_image_get_buffer(frame->get_depth_image());
             geometry::_bgra_t *color_data = (geometry::_bgra_t *)(void *)k4a_image_get_buffer(frame->get_color_image());
+
+            std::cout << "Depth data: get frame buffer" << std::endl;            
 
             for (size_t row = device_info.roi.start_y ; row < device_info.roi.start_y + device_info.roi.height; row = row + device_info.system_config.subsample_row) {
                 for (size_t col = device_info.roi.start_x; col < device_info.roi.start_x + device_info.roi.width; col = col + device_info.system_config.subsample_col) {
@@ -455,20 +462,27 @@ namespace uvgvolucap {
 
                             if (idx < frame->get_subspace_fragments()->size())
                             {
-                                frame->get_subspace_fragments()->at(idx)->add_point_subspace(grid_point.x, grid_point.y, grid_point.z, r, g, b, grid_ptr->get_grid_origin());   
+                                frame->get_subspace_fragments()->at(idx)->add_point_subspace(grid_point.x, grid_point.y, grid_point.z, r, g, b, grid_ptr->get_grid_origin()); 
+                                std::cout << "Add point to subspace fragments" << std::endl;
                             }
                         }
                     }
                 }
             }
 
+            std::cout << "Finalize point to subspace fragments" << std::endl;
+
             for (size_t i = 0; i < frame->get_subspace_fragments()->size(); i++)
             {
                 frame->get_subspace_fragments()->at(i)->finallized();
             }
 
+            std::cout << "Get subspace fragments" << std::endl;
+
             k4a_image_release(frame->get_depth_image());
             k4a_image_release(frame->get_color_image());
+
+            std::cout << "Process frame voxel subspace End" << std::endl;
 
 #ifdef PROCESSING_TIMER
             auto end_time = std::chrono::high_resolution_clock::now();
@@ -586,6 +600,7 @@ namespace uvgvolucap {
         }
 
         void Kinect::pointcloud_production_line_with_subsapce() {
+            std::cout << "Pointcloud production line with subspace" << std::endl;
             if (sync_manager == nullptr)
             {
                 Logger::log(LogLevel::ERROR, device_info.serial_number, "Sync manager is not assigned\n");
@@ -622,6 +637,7 @@ namespace uvgvolucap {
                     // Capture and process the frames
                     k4a_image_t depth_image = k4a_capture_get_depth_image(capture);
                     k4a_image_t color_image = k4a_capture_get_color_image(capture);
+                    std::cout << "Get capture" << std::endl;
 
                     // Form the frame
                     std::shared_ptr<Kinect_Frame> frame = std::make_shared<Kinect_Frame>( frame_count, 

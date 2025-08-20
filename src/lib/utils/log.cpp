@@ -60,24 +60,27 @@ void Logger::log(LogLevel level, const std::string context, const std::string& m
 }
 
 std::string Logger::printfStrToStdStr(const char* fmt, ...) {
+    (void)fmt;
     // char* str ;
     // va_list args;
     // va_start(args, fmt);
-    // // if(vasprintf(&str, fmt, args) == -1) {
-    // //     std::cout << "Erreur vasprintf" << std::endl;
-    // // }
+    // if(vasprintf(&str, fmt, args) == -1) {
+    //     std::cout << "Erreur vasprintf" << std::endl;
+    // }
     // va_end(args);
     // return (std::string)str;
-    return "FIX LATER DUE TO VASPRINTF NOT BEING AVAILABLE ON WINDOWS";
+    // return "FIX LATER DUE TO VASPRINTF NOT BEING AVAILABLE ON WINDOWS";
 }
 
 std::string Logger::vprintfStrToStdStr(const char* fmt, va_list args) {
+    (void)fmt;
+    (void)args;
     // char* str;
-    // // if(vasprintf(&str, fmt, args) == -1) {
-    // //     std::cout << "Erreur vasprintf" << std::endl;
-    // // }
+    // if(vasprintf(&str, fmt, args) == -1) {
+    //     std::cout << "Erreur vasprintf" << std::endl;
+    // }
     // return (std::string)str;
-    return "FIX LATER DUE TO VASPRINTF NOT BEING AVAILABLE ON WINDOWS";
+    // return "FIX LATER DUE TO VASPRINTF NOT BEING AVAILABLE ON WINDOWS";
 }
 
 }  // namespace uvgvolucap

@@ -10,6 +10,7 @@
 #include <atomic>
 #include <cassert>
 #include <map>
+#include <string>
 
 #ifdef _WIN32
 #include <array>
