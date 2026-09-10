@@ -1,7 +1,7 @@
 [submodule "plyxporter"]
 	path = plyxporter
-	url = https://gitlab.tuni.fi/cs/ultravideo/pcc/06-plyxporter.git
+	url = https://github.com/ultravideo/uvgPlyXporter.git
 [submodule "visualizer"]
 	path = visualizer
-	url = https://gitlab.tuni.fi/cs/ultravideo/pcc/visualizer.git
+	url = https://github.com/ultravideo/uvgVoluPlay.git
 	branch = Build-Visual-Studio
